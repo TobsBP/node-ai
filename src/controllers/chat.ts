@@ -2,6 +2,16 @@ import type { FastifyReply, FastifyRequest } from 'fastify';
 import { chat_service } from '@/services/chat.js';
 
 export const chat_controller = {
+	async list(
+		request: FastifyRequest<{ Querystring: { limit?: number; offset?: number } }>,
+		reply: FastifyReply,
+	) {
+		const { limit = 20, offset = 0 } = request.query;
+		const { data, error } = await chat_service.list(limit, offset);
+		if (error) return reply.status(500).send({ error });
+		return reply.status(200).send(data);
+	},
+
 	async send_message(
 		request: FastifyRequest<{ Body: { message: string; source?: string } }>,
 		reply: FastifyReply,

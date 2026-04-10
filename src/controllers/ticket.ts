@@ -2,6 +2,16 @@ import type { FastifyReply, FastifyRequest } from 'fastify';
 import { ticket_service } from '@/services/ticket.js';
 
 export const ticket_controller = {
+	async list(
+		request: FastifyRequest<{ Querystring: { limit?: number; offset?: number } }>,
+		reply: FastifyReply,
+	) {
+		const { limit = 20, offset = 0 } = request.query;
+		const { data, error } = await ticket_service.list(limit, offset);
+		if (error) return reply.status(500).send({ error });
+		return reply.status(200).send(data);
+	},
+
 	async classify(
 		request: FastifyRequest<{ Body: { message: string; source?: string } }>,
 		reply: FastifyReply,

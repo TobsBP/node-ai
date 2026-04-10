@@ -4,6 +4,25 @@ import { ticket_controller } from '@/controllers/ticket.js';
 import { jira_issue_schema, ticket_schema } from '@/types/ticket.js';
 
 export const ticket_route = async (app: FastifyInstance) => {
+	app.get(
+		'/tickets',
+		{
+			schema: {
+				querystring: z.object({
+					limit: z.coerce.number().int().min(1).max(100).optional(),
+					offset: z.coerce.number().int().min(0).optional(),
+				}),
+				response: {
+					200: z.array(ticket_schema),
+					500: z.object({ error: z.unknown() }),
+				},
+				tags: ['Tickets'],
+				summary: 'List all tickets saved in MongoDB',
+			},
+		},
+		ticket_controller.list,
+	);
+
 	app.post(
 		'/tickets',
 		{

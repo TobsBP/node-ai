@@ -7,6 +7,24 @@ import type { Ticket } from '@/types/ticket.js';
 import { CLASSIFY_PROMPT } from '@/utils/consts/classify_prompt.js';
 
 export const ticket_service = {
+	async list(
+		limit = 20,
+		offset = 0,
+	): Promise<{ data: Ticket[] | null; error: unknown }> {
+		try {
+			const data = await tickets_collection
+				.find({}, { projection: { _id: 0 } })
+				.sort({ created_at: -1 })
+				.skip(offset)
+				.limit(limit)
+				.toArray();
+			return { data, error: null };
+		} catch (error) {
+			console.error('Error listing tickets:', error);
+			return { data: null, error };
+		}
+	},
+
 	async classify_for_rag(
 		message: string,
 		source?: string,

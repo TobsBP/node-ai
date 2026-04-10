@@ -25,8 +25,10 @@ A REST API that uses AI to classify support tickets, store them in a vector data
 
 | Method | Path | Description |
 |--------|------|-------------|
+| `GET`  | `/tickets` | List all tickets saved in MongoDB |
 | `POST` | `/tickets` | Classify a message, save to vector DB, and create a Jira issue |
 | `POST` | `/tickets/search` | Search similar tickets by semantic similarity |
+| `GET`  | `/chats` | List all conversations saved in MongoDB |
 | `POST` | `/chat` | Send a message and get an AI response grounded in past tickets |
 
 ### POST `/tickets`

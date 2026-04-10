@@ -3,6 +3,7 @@ import { generate_embedding, send_message } from '@/lib/model.js';
 import { conversations_collection } from '@/lib/mongo.js';
 import { ensure_collection, qdrant, TICKETS_COLLECTION } from '@/lib/qdrant.js';
 import { ticket_service } from '@/services/ticket.js';
+import type { Conversation } from '@/types/conversation.js';
 import type { Ticket } from '@/types/ticket.js';
 import { build_rag_prompt } from '@/utils/build_rag_prompt.js';
 
@@ -11,6 +12,24 @@ export type ChatResponse = {
 };
 
 export const chat_service = {
+	async list(
+		limit = 20,
+		offset = 0,
+	): Promise<{ data: Conversation[] | null; error: unknown }> {
+		try {
+			const data = await conversations_collection
+				.find({}, { projection: { _id: 0 } })
+				.sort({ created_at: -1 })
+				.skip(offset)
+				.limit(limit)
+				.toArray();
+			return { data, error: null };
+		} catch (error) {
+			console.error('Error listing conversations:', error);
+			return { data: null, error };
+		}
+	},
+
 	async create_message(
 		message: string,
 		source?: string,
