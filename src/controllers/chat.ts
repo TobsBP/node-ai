@@ -10,7 +10,8 @@ export const chat_controller = {
 		const { data, error } = await chat_service.create_message(message, source);
 		if (error) {
 			const e = error as Record<string, unknown>;
-			if (e?.['status'] === 429) return reply.status(429).send({ error: 'Limite de uso atingido' });
+			if (e?.status === 429)
+				return reply.status(429).send({ error: 'Limite de uso atingido' });
 			return reply.status(500).send({ error });
 		}
 		if (!data)

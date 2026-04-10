@@ -13,7 +13,8 @@ export const ticket_controller = {
 		);
 		if (error) {
 			const e = error as Record<string, unknown>;
-			if (e?.['status'] === 429) return reply.status(429).send({ error: 'Limite de uso atingido' });
+			if (e?.status === 429)
+				return reply.status(429).send({ error: 'Limite de uso atingido' });
 			return reply.status(500).send({ error });
 		}
 		if (!data)

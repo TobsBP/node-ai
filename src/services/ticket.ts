@@ -31,7 +31,9 @@ export const ticket_service = {
 
 			const context = similar.points.map((p) => p.payload as Ticket);
 
-			const classify_res = await send_message(CLASSIFY_PROMPT(message, context));
+			const classify_res = await send_message(
+				CLASSIFY_PROMPT(message, context),
+			);
 
 			if (classify_res.error || !classify_res.data) {
 				return {
