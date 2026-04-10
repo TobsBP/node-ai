@@ -1,17 +1,17 @@
-# node-ai
+# 🤖 node-ai
 
 A REST API that uses AI to classify support tickets, store them in a vector database, and answer questions about them using RAG (Retrieval-Augmented Generation). It also integrates with Jira to automatically create issues from incoming tickets.
 
-## Features
+## ✨ Features
 
-- **Ticket classification** — AI analyzes incoming messages and assigns category, severity, summary, tags, and a detailed analysis
-- **Vector storage** — tickets are embedded and stored in Qdrant for semantic search
-- **RAG chat** — answer questions using context retrieved from similar past tickets
-- **Jira integration** — automatically creates a Jira issue for each new ticket
-- **Semantic search** — find similar tickets by meaning, not just keywords
-- **Interactive API docs** — Scalar UI available at `/docs`
+- 🎫 **Ticket classification** — AI analyzes incoming messages and assigns category, severity, summary, tags, and a detailed analysis
+- 🗄️ **Vector storage** — tickets are embedded and stored in Qdrant for semantic search
+- 💬 **RAG chat** — answer questions using context retrieved from similar past tickets
+- 🔗 **Jira integration** — automatically creates a Jira issue for each new ticket
+- 🔍 **Semantic search** — find similar tickets by meaning, not just keywords
+- 📖 **Interactive API docs** — Scalar UI available at `/docs`
 
-## Tech Stack
+## 🛠️ Tech Stack
 
 - **Runtime:** Node.js 20, TypeScript
 - **Framework:** Fastify 5
@@ -21,7 +21,7 @@ A REST API that uses AI to classify support tickets, store them in a vector data
 - **Validation:** Zod
 - **Linting:** Biome
 
-## API Endpoints
+## 🚀 API Endpoints
 
 | Method | Path | Description |
 |--------|------|-------------|
@@ -85,29 +85,29 @@ Response `200`:
 { "reply": "Based on past tickets, the most common auth issues are..." }
 ```
 
-## Environment Variables
+## ⚙️ Environment Variables
 
 Create a `.env` file at the project root:
 
 ```env
-# Google Gemini
+# 🤖 Google Gemini
 GEMINI_API_KEY=your_gemini_api_key
 GEMINI_MODEL=gemini-2.0-flash
 
-# MongoDB
+# 🍃 MongoDB
 MONGO_URI=mongodb://localhost:27017/node-ai
 
-# Qdrant
+# 🗄️ Qdrant
 QDRANT_URL=http://localhost:6333
 
-# Jira
+# 🔗 Jira
 JIRA_BASE_URL=https://yourorg.atlassian.net
 JIRA_EMAIL=you@example.com
 JIRA_API_TOKEN=your_jira_api_token
 JIRA_PROJECT_KEY=PROJ
 ```
 
-## Running Locally
+## 💻 Running Locally
 
 **Prerequisites:** Node.js 20+, a running Qdrant instance, a MongoDB instance.
 
@@ -119,18 +119,18 @@ npm run dev
 The API will be available at `http://localhost:3333`.  
 Interactive docs: `http://localhost:3333/docs`
 
-## Running with Docker
+## 🐳 Running with Docker
 
 ```bash
 docker build -t node-ai .
 docker run -p 3333:3333 --env-file .env node-ai
 ```
 
-## Scripts
+## 📜 Scripts
 
 | Command | Description |
 |---------|-------------|
-| `npm run dev` | Start dev server with hot reload |
-| `npm run build` | Compile TypeScript to `dist/` |
-| `npm start` | Run compiled output |
-| `npm run lint` | Lint and auto-fix with Biome |
+| `npm run dev` | ♻️ Start dev server with hot reload |
+| `npm run build` | 🔨 Compile TypeScript to `dist/` |
+| `npm start` | ▶️ Run compiled output |
+| `npm run lint` | 🧹 Lint and auto-fix with Biome |
