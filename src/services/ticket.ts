@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { create_jira_issue, type JiraCreatedIssue } from '../lib/jira.js';
+import { tickets_collection } from '../lib/mongo.js';
 import { generate_embedding, send_message } from '../lib/model.js';
 import {
 	ensure_collection,
@@ -10,7 +11,7 @@ import type { Ticket } from '../types/ticket.js';
 import { CLASSIFY_PROMPT } from '../utils/consts/classify_prompt.js';
 
 export const ticket_service = {
-	async classify_and_save(
+	async classify_for_rag(
 		message: string,
 		source?: string,
 	): Promise<{ data: Ticket | null; error: unknown }> {
@@ -48,9 +49,25 @@ export const ticket_service = {
 
 			return { data: ticket, error: null };
 		} catch (error) {
-			console.error('Error classifying ticket:', error);
+			console.error('Error classifying for RAG:', error);
 			return { data: null, error };
 		}
+	},
+
+	async classify_and_save(
+		message: string,
+		source?: string,
+	): Promise<{ data: Ticket | null; error: unknown }> {
+		const { data: ticket, error } = await this.classify_for_rag(message, source);
+		if (error || !ticket) return { data: null, error };
+
+		try {
+			await tickets_collection.insertOne(ticket);
+		} catch (err) {
+			console.error('Error saving ticket to MongoDB:', err);
+		}
+
+		return { data: ticket, error: null };
 	},
 
 	async classify_save_and_create_jira(

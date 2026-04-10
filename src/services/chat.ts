@@ -1,3 +1,5 @@
+import { randomUUID } from 'node:crypto';
+import { conversations_collection } from '../lib/mongo.js';
 import { generate_embedding, send_message } from '../lib/model.js';
 import {
 	ensure_collection,
@@ -26,7 +28,7 @@ export const chat_service = {
 				limit: 5,
 				with_payload: true,
 			}),
-			ticket_service.classify_and_save(message, source),
+			ticket_service.classify_for_rag(message, source),
 		]);
 
 		if (classify_result.error || !classify_result.data) {
@@ -43,6 +45,19 @@ export const chat_service = {
 
 		if (chat_result.error || !chat_result.data) {
 			return { data: null, error: chat_result.error ?? 'Chat failed' };
+		}
+
+		try {
+			await conversations_collection.insertOne({
+				id: randomUUID(),
+				message,
+				source,
+				reply: chat_result.data,
+				ticket_id: classify_result.data.id,
+				created_at: new Date().toISOString(),
+			});
+		} catch (err) {
+			console.error('Error saving conversation to MongoDB:', err);
 		}
 
 		return {

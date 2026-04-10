@@ -10,6 +10,7 @@ import {
 	type ZodTypeProvider,
 } from 'fastify-type-provider-zod';
 
+import { connect_mongo } from './lib/mongo.js';
 import { routes } from './router.js';
 
 const app = fastify().withTypeProvider<ZodTypeProvider>();
@@ -40,6 +41,8 @@ app.register(ScalarApiReference, {
 
 app.register(routes);
 
-app.listen({ port: 3333, host: '0.0.0.0' }).then(() => {
-	console.log('Docs availablee at http://localhost:3333/docs');
+connect_mongo().then(() => {
+	app.listen({ port: 3333, host: '0.0.0.0' }).then(() => {
+		console.log('Docs availablee at http://localhost:3333/docs');
+	});
 });

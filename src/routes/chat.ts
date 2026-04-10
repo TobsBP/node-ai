@@ -1,7 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { chat_controller } from '../controllers/chat.js';
-import { jira_issue_schema, ticket_schema } from '../types/ticket.js';
 
 export const chat_route = async (app: FastifyInstance) => {
 	app.post(
@@ -13,16 +12,12 @@ export const chat_route = async (app: FastifyInstance) => {
 					source: z.string().optional(),
 				}),
 				response: {
-					200: z.object({
-						reply: z.string(),
-						ticket: ticket_schema,
-						jira: jira_issue_schema.nullable(),
-					}),
+					200: z.object({ reply: z.string() }),
 					400: z.object({ error: z.string() }),
 					500: z.object({ error: z.unknown() }),
 				},
 				tags: ['Chat'],
-				summary: 'Send a message, classify it and create a Jira issue',
+				summary: 'Send a message and get an AI response',
 			},
 		},
 		chat_controller.send_message,
