@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { create_jira_issue, type JiraCreatedIssue } from '../lib/jira.js';
-import { tickets_collection } from '../lib/mongo.js';
 import { generate_embedding, send_message } from '../lib/model.js';
+import { tickets_collection } from '../lib/mongo.js';
 import {
 	ensure_collection,
 	qdrant,
@@ -58,7 +58,10 @@ export const ticket_service = {
 		message: string,
 		source?: string,
 	): Promise<{ data: Ticket | null; error: unknown }> {
-		const { data: ticket, error } = await this.classify_for_rag(message, source);
+		const { data: ticket, error } = await this.classify_for_rag(
+			message,
+			source,
+		);
 		if (error || !ticket) return { data: null, error };
 
 		try {

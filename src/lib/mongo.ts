@@ -1,4 +1,4 @@
-import { MongoClient, type Collection } from 'mongodb';
+import { type Collection, MongoClient } from 'mongodb';
 import type { Conversation } from '../types/conversation.js';
 import type { Ticket } from '../types/ticket.js';
 

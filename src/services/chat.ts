@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
-import { conversations_collection } from '../lib/mongo.js';
 import { generate_embedding, send_message } from '../lib/model.js';
+import { conversations_collection } from '../lib/mongo.js';
 import {
 	ensure_collection,
 	qdrant,
