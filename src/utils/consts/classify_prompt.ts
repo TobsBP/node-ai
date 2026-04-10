@@ -1,7 +1,20 @@
-export const CLASSIFY_PROMPT = (message: string) => `
+import type { Ticket } from '../../types/ticket.js';
+
+export const CLASSIFY_PROMPT = (message: string, context: Ticket[] = []) => {
+	const context_block =
+		context.length > 0
+			? `\nSimilar past tickets for reference:\n${context
+					.map(
+						(t, i) =>
+							`[${i + 1}] Category: ${t.category} | Severity: ${t.severity} | Tags: ${t.tags.join(', ')}\nSummary: ${t.summary}`,
+					)
+					.join('\n\n')}\n`
+			: '';
+
+	return `
 Classify the following support ticket or message.
 Respond ONLY with a valid JSON object — no markdown, no explanation.
-
+${context_block}
 Message: "${message}"
 
 JSON format:
@@ -27,3 +40,4 @@ Classification rules:
 
 - tags: 3 to 5 lowercase keywords extracted from the message (e.g. "login", "timeout", "production", "api")
 `;
+};

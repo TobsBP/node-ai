@@ -14,6 +14,7 @@ export const chat_route = async (app: FastifyInstance) => {
 				response: {
 					200: z.object({ reply: z.string() }),
 					400: z.object({ error: z.string() }),
+					429: z.object({ error: z.string() }),
 					500: z.object({ error: z.unknown() }),
 				},
 				tags: ['Chat'],

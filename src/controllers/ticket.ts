@@ -11,7 +11,11 @@ export const ticket_controller = {
 			message,
 			source,
 		);
-		if (error) return reply.status(500).send({ error });
+		if (error) {
+			const e = error as Record<string, unknown>;
+			if (e?.['status'] === 429) return reply.status(429).send({ error: 'Limite de uso atingido' });
+			return reply.status(500).send({ error });
+		}
 		if (!data)
 			return reply.status(400).send({ error: 'Classification failed' });
 		return reply.status(201).send(data);

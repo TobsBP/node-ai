@@ -16,10 +16,22 @@ export const ticket_service = {
 		source?: string,
 	): Promise<{ data: Ticket | null; error: unknown }> {
 		try {
-			const [classify_res, embedding] = await Promise.all([
-				send_message(CLASSIFY_PROMPT(message)),
+			await ensure_collection();
+
+			const [query_embedding, doc_embedding] = await Promise.all([
+				generate_embedding(message, 'RETRIEVAL_QUERY'),
 				generate_embedding(message, 'RETRIEVAL_DOCUMENT'),
 			]);
+
+			const similar = await qdrant.query(TICKETS_COLLECTION, {
+				query: query_embedding,
+				limit: 3,
+				with_payload: true,
+			});
+
+			const context = similar.points.map((p) => p.payload as Ticket);
+
+			const classify_res = await send_message(CLASSIFY_PROMPT(message, context));
 
 			if (classify_res.error || !classify_res.data) {
 				return {
@@ -42,9 +54,8 @@ export const ticket_service = {
 				...classification,
 			};
 
-			await ensure_collection();
 			await qdrant.upsert(TICKETS_COLLECTION, {
-				points: [{ id: ticket.id, vector: embedding, payload: ticket }],
+				points: [{ id: ticket.id, vector: doc_embedding, payload: ticket }],
 			});
 
 			return { data: ticket, error: null };

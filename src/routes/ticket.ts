@@ -18,6 +18,7 @@ export const ticket_route = async (app: FastifyInstance) => {
 						jira: jira_issue_schema.nullable(),
 					}),
 					400: z.object({ error: z.string() }),
+					429: z.object({ error: z.string() }),
 					500: z.object({ error: z.unknown() }),
 				},
 				tags: ['Tickets'],
