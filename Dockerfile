@@ -22,7 +22,7 @@ ENV NODE_ENV=production
 WORKDIR /usr/src/app
 
 # Copy package files
-COPY social-service/package.json social-service/package-lock.json ./
+COPY package.json package-lock.json ./
 
 # Install ONLY production dependencies
 RUN npm i
