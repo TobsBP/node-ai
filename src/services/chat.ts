@@ -1,14 +1,10 @@
 import { randomUUID } from 'node:crypto';
-import { generate_embedding, send_message } from '../lib/model.js';
-import { conversations_collection } from '../lib/mongo.js';
-import {
-	ensure_collection,
-	qdrant,
-	TICKETS_COLLECTION,
-} from '../lib/qdrant.js';
-import type { Ticket } from '../types/ticket.js';
-import { build_rag_prompt } from '../utils/build_rag_prompt.js';
-import { ticket_service } from './ticket.js';
+import { generate_embedding, send_message } from '@/lib/model.js';
+import { conversations_collection } from '@/lib/mongo.js';
+import { ensure_collection, qdrant, TICKETS_COLLECTION } from '@/lib/qdrant.js';
+import { ticket_service } from '@/services/ticket.js';
+import type { Ticket } from '@/types/ticket.js';
+import { build_rag_prompt } from '@/utils/build_rag_prompt.js';
 
 export type ChatResponse = {
 	reply: string;

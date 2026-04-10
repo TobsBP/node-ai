@@ -1,9 +1,9 @@
-import type { Ticket } from '../types/ticket.js';
+import type { Ticket } from '@/types/ticket.js';
 import {
 	CATEGORY_TO_ISSUE_TYPE,
 	type JiraCreatedIssue,
 	SEVERITY_TO_PRIORITY,
-} from '../utils/consts/jira.js';
+} from '@/utils/consts/jira.js';
 
 export type { JiraCreatedIssue };
 

@@ -1,5 +1,5 @@
 import type { FastifyReply, FastifyRequest } from 'fastify';
-import { chat_service } from '../services/chat.js';
+import { chat_service } from '@/services/chat.js';
 
 export const chat_controller = {
 	async send_message(

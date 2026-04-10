@@ -1,4 +1,4 @@
-import type { Ticket } from '../types/ticket.js';
+import type { Ticket } from '@/types/ticket.js';
 
 export function build_rag_prompt(question: string, context: Ticket[]): string {
 	if (context.length === 0) {

@@ -1,5 +1,5 @@
 import type { FastifyReply, FastifyRequest } from 'fastify';
-import { ticket_service } from '../services/ticket.js';
+import { ticket_service } from '@/services/ticket.js';
 
 export const ticket_controller = {
 	async classify(

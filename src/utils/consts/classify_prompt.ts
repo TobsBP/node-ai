@@ -1,4 +1,4 @@
-import type { Ticket } from '../../types/ticket.js';
+import type { Ticket } from '@/types/ticket.js';
 
 export const CLASSIFY_PROMPT = (message: string, context: Ticket[] = []) => {
 	const context_block =

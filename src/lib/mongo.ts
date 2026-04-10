@@ -1,6 +1,6 @@
 import { type Collection, MongoClient } from 'mongodb';
-import type { Conversation } from '../types/conversation.js';
-import type { Ticket } from '../types/ticket.js';
+import type { Conversation } from '@/types/conversation.js';
+import type { Ticket } from '@/types/ticket.js';
 
 const url = process.env.MONGODB_URL;
 if (!url) throw new Error('MONGODB_URL is not set');

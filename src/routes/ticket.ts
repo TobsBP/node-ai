@@ -1,7 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
-import { ticket_controller } from '../controllers/ticket.js';
-import { jira_issue_schema, ticket_schema } from '../types/ticket.js';
+import { ticket_controller } from '@/controllers/ticket.js';
+import { jira_issue_schema, ticket_schema } from '@/types/ticket.js';
 
 export const ticket_route = async (app: FastifyInstance) => {
 	app.post(

@@ -1,6 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
-import { chat_controller } from '../controllers/chat.js';
+import { chat_controller } from '@/controllers/chat.js';
 
 export const chat_route = async (app: FastifyInstance) => {
 	app.post(

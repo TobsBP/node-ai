@@ -1,4 +1,4 @@
-import type { Ticket } from '../../types/ticket.js';
+import type { Ticket } from '@/types/ticket.js';
 
 export type JiraCreatedIssue = {
 	id: string;

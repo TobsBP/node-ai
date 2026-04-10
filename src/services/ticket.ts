@@ -1,14 +1,10 @@
 import { randomUUID } from 'node:crypto';
-import { create_jira_issue, type JiraCreatedIssue } from '../lib/jira.js';
-import { generate_embedding, send_message } from '../lib/model.js';
-import { tickets_collection } from '../lib/mongo.js';
-import {
-	ensure_collection,
-	qdrant,
-	TICKETS_COLLECTION,
-} from '../lib/qdrant.js';
-import type { Ticket } from '../types/ticket.js';
-import { CLASSIFY_PROMPT } from '../utils/consts/classify_prompt.js';
+import { create_jira_issue, type JiraCreatedIssue } from '@/lib/jira.js';
+import { generate_embedding, send_message } from '@/lib/model.js';
+import { tickets_collection } from '@/lib/mongo.js';
+import { ensure_collection, qdrant, TICKETS_COLLECTION } from '@/lib/qdrant.js';
+import type { Ticket } from '@/types/ticket.js';
+import { CLASSIFY_PROMPT } from '@/utils/consts/classify_prompt.js';
 
 export const ticket_service = {
 	async classify_for_rag(
