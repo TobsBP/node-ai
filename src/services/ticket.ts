@@ -1,10 +1,34 @@
 import { randomUUID } from 'node:crypto';
 import { create_jira_issue, type JiraCreatedIssue } from '@/lib/jira.js';
 import { generate_embedding, send_message } from '@/lib/model.js';
+import { create_monday_item, type MondayCreatedItem } from '@/lib/monday.js';
 import { tickets_collection } from '@/lib/mongo.js';
 import { ensure_collection, qdrant, TICKETS_COLLECTION } from '@/lib/qdrant.js';
 import type { Ticket } from '@/types/ticket.js';
 import { CLASSIFY_PROMPT } from '@/utils/consts/classify_prompt.js';
+
+type TicketInput = Pick<
+	Ticket,
+	| 'title'
+	| 'system'
+	| 'studentId'
+	| 'deviceModel'
+	| 'version'
+	| 'description'
+	| 'file'
+	| 'createdBy'
+>;
+
+function build_message(input: TicketInput): string {
+	const parts = [
+		`Title: ${input.title}`,
+		`System: ${input.system}`,
+		input.description ? `Description: ${input.description}` : null,
+		input.deviceModel ? `Device: ${input.deviceModel}` : null,
+		input.version ? `Version: ${input.version}` : null,
+	];
+	return parts.filter(Boolean).join('\n');
+}
 
 export const ticket_service = {
 	async list(
@@ -26,11 +50,12 @@ export const ticket_service = {
 	},
 
 	async classify_for_rag(
-		message: string,
-		source?: string,
+		input: TicketInput,
 	): Promise<{ data: Ticket | null; error: unknown }> {
 		try {
 			await ensure_collection();
+
+			const message = build_message(input);
 
 			const [query_embedding, doc_embedding] = await Promise.all([
 				generate_embedding(message, 'RETRIEVAL_QUERY'),
@@ -59,13 +84,14 @@ export const ticket_service = {
 			const raw = classify_res.data.trim().replace(/^```json\n?|```$/g, '');
 			const classification = JSON.parse(raw) as Pick<
 				Ticket,
-				'category' | 'severity' | 'summary' | 'analysis' | 'tags'
+				'category' | 'severity' | 'area' | 'summary' | 'analysis' | 'tags'
 			>;
 
 			const ticket: Ticket = {
 				id: randomUUID(),
-				message,
-				source,
+				...input,
+				status: 'open',
+				source: input.system,
 				created_at: new Date().toISOString(),
 				...classification,
 			};
@@ -82,13 +108,9 @@ export const ticket_service = {
 	},
 
 	async classify_and_save(
-		message: string,
-		source?: string,
+		input: TicketInput,
 	): Promise<{ data: Ticket | null; error: unknown }> {
-		const { data: ticket, error } = await this.classify_for_rag(
-			message,
-			source,
-		);
+		const { data: ticket, error } = await this.classify_for_rag(input);
 		if (error || !ticket) return { data: null, error };
 
 		try {
@@ -100,24 +122,31 @@ export const ticket_service = {
 		return { data: ticket, error: null };
 	},
 
-	async classify_save_and_create_jira(
-		message: string,
-		source?: string,
-	): Promise<{
-		data: { ticket: Ticket; jira: JiraCreatedIssue | null } | null;
+	async classify_save_and_create_jira(input: TicketInput): Promise<{
+		data: {
+			ticket: Ticket;
+			jira: JiraCreatedIssue | null;
+			monday: MondayCreatedItem | null;
+		} | null;
 		error: unknown;
 	}> {
-		const { data: ticket, error } = await this.classify_and_save(
-			message,
-			source,
-		);
+		const { data: ticket, error } = await this.classify_and_save(input);
 		if (error || !ticket)
 			return { data: null, error: error ?? 'Classification failed' };
 
-		const { data: jira, error: jira_error } = await create_jira_issue(ticket);
-		if (jira_error) console.error('Jira issue creation failed:', jira_error);
+		const [
+			{ data: jira, error: jira_error },
+			{ data: monday, error: monday_error },
+		] = await Promise.all([
+			create_jira_issue(ticket),
+			create_monday_item(ticket),
+		]);
 
-		return { data: { ticket, jira }, error: null };
+		if (jira_error) console.error('Jira issue creation failed:', jira_error);
+		if (monday_error)
+			console.error('Monday item creation failed:', monday_error);
+
+		return { data: { ticket, jira, monday }, error: null };
 	},
 
 	async search_similar(

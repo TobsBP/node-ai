@@ -5,7 +5,7 @@ export const conversation_schema = z.object({
 	message: z.string(),
 	source: z.string().optional(),
 	reply: z.string(),
-	ticket_id: z.string(),
+	ticket_id: z.string().optional(),
 	created_at: z.string(),
 });
 

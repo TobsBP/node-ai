@@ -2,7 +2,6 @@ import { randomUUID } from 'node:crypto';
 import { generate_embedding, send_message } from '@/lib/model.js';
 import { conversations_collection } from '@/lib/mongo.js';
 import { ensure_collection, qdrant, TICKETS_COLLECTION } from '@/lib/qdrant.js';
-import { ticket_service } from '@/services/ticket.js';
 import type { Conversation } from '@/types/conversation.js';
 import type { Ticket } from '@/types/ticket.js';
 import { build_rag_prompt } from '@/utils/build_rag_prompt.js';
@@ -37,21 +36,11 @@ export const chat_service = {
 		const embedding = await generate_embedding(message, 'RETRIEVAL_QUERY');
 		await ensure_collection();
 
-		const [rag_results, classify_result] = await Promise.all([
-			qdrant.query(TICKETS_COLLECTION, {
-				query: embedding,
-				limit: 5,
-				with_payload: true,
-			}),
-			ticket_service.classify_for_rag(message, source),
-		]);
-
-		if (classify_result.error || !classify_result.data) {
-			return {
-				data: null,
-				error: classify_result.error ?? 'Classification failed',
-			};
-		}
+		const rag_results = await qdrant.query(TICKETS_COLLECTION, {
+			query: embedding,
+			limit: 5,
+			with_payload: true,
+		});
 
 		const context = rag_results.points.map((p) => p.payload as Ticket);
 		const prompt = build_rag_prompt(message, context);
@@ -68,7 +57,6 @@ export const chat_service = {
 				message,
 				source,
 				reply: chat_result.data,
-				ticket_id: classify_result.data.id,
 				created_at: new Date().toISOString(),
 			});
 		} catch (err) {

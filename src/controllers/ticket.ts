@@ -1,9 +1,12 @@
 import type { FastifyReply, FastifyRequest } from 'fastify';
+import { verify_firebase_token } from '@/lib/firebase.js';
 import { ticket_service } from '@/services/ticket.js';
 
 export const ticket_controller = {
 	async list(
-		request: FastifyRequest<{ Querystring: { limit?: number; offset?: number } }>,
+		request: FastifyRequest<{
+			Querystring: { limit?: number; offset?: number };
+		}>,
 		reply: FastifyReply,
 	) {
 		const { limit = 20, offset = 0 } = request.query;
@@ -12,15 +15,53 @@ export const ticket_controller = {
 		return reply.status(200).send(data);
 	},
 
-	async classify(
-		request: FastifyRequest<{ Body: { message: string; source?: string } }>,
-		reply: FastifyReply,
-	) {
-		const { message, source } = request.body;
-		const { data, error } = await ticket_service.classify_save_and_create_jira(
-			message,
-			source,
-		);
+	async classify(request: FastifyRequest, reply: FastifyReply) {
+		const authHeader = request.headers.authorization;
+		if (!authHeader?.startsWith('Bearer ')) {
+			return reply
+				.status(401)
+				.send({ error: 'Missing or invalid authorization header' });
+		}
+
+		let createdBy: string;
+		try {
+			createdBy = await verify_firebase_token(authHeader.slice(7));
+		} catch {
+			return reply.status(401).send({ error: 'Invalid or expired token' });
+		}
+
+		const fields: Record<string, string> = {};
+		let fileName: string | undefined;
+
+		for await (const part of request.parts()) {
+			if (part.type === 'file') {
+				await part.toBuffer();
+				fileName = part.filename;
+			} else {
+				fields[part.fieldname] = part.value as string;
+			}
+		}
+
+		const { title, system, studentId, deviceModel, version, description } =
+			fields;
+
+		if (!title || !system || !studentId) {
+			return reply
+				.status(400)
+				.send({ error: 'title, system and studentId are required' });
+		}
+
+		const { data, error } = await ticket_service.classify_save_and_create_jira({
+			title,
+			system,
+			studentId,
+			deviceModel,
+			version,
+			description,
+			file: fileName,
+			createdBy,
+		});
+
 		if (error) {
 			const e = error as Record<string, unknown>;
 			if (e?.status === 429)

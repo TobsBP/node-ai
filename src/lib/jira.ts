@@ -1,5 +1,6 @@
 import type { Ticket } from '@/types/ticket.js';
 import {
+	AREA_TO_ASSIGNEE,
 	CATEGORY_TO_ISSUE_TYPE,
 	type JiraCreatedIssue,
 	SEVERITY_TO_PRIORITY,
@@ -35,7 +36,7 @@ export async function create_jira_issue(
 				fields: {
 					project: { key: JIRA_PROJECT_KEY },
 					issuetype: { name: CATEGORY_TO_ISSUE_TYPE[ticket.category] },
-					summary: ticket.summary,
+					summary: ticket.title,
 					description: {
 						type: 'doc',
 						version: 1,
@@ -49,7 +50,7 @@ export async function create_jira_issue(
 								content: [
 									{
 										type: 'text',
-										text: `Original message: ${ticket.message}`,
+										text: `Student ID: ${ticket.studentId} | System: ${ticket.system}${ticket.description ? ` | Description: ${ticket.description}` : ''}`,
 										marks: [{ type: 'em' }],
 									},
 								],
@@ -58,6 +59,10 @@ export async function create_jira_issue(
 					},
 					priority: { name: SEVERITY_TO_PRIORITY[ticket.severity] },
 					labels: ticket.tags,
+					...(ticket.area &&
+						AREA_TO_ASSIGNEE[ticket.area] && {
+							assignee: { accountId: AREA_TO_ASSIGNEE[ticket.area] },
+						}),
 				},
 			}),
 		});

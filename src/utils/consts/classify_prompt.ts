@@ -21,6 +21,7 @@ JSON format:
 {
   "category": "bug" | "infra" | "auth" | "feature" | "other",
   "severity": "critical" | "high" | "medium" | "low",
+  "area": "backend" | "frontend" | "fullstack",
   "summary": "one-line description in the same language as the message",
   "analysis": "detailed explanation of the issue and suggested next steps, in the same language as the message",
   "tags": ["keyword1", "keyword2"]
@@ -37,6 +38,10 @@ Classification rules:
 - severity "high": major functionality broken, affects many users
 - severity "medium": partial functionality affected, workaround exists
 - severity "low": minor issue, cosmetic, single user affected
+
+- area "backend": API, server, database, authentication, infra, performance, deploy, backend logic
+- area "frontend": UI, interface, layout, CSS, component, page, button, visual, client-side
+- area "fullstack": issues that clearly span both frontend and backend layers
 
 - tags: 3 to 5 lowercase keywords extracted from the message (e.g. "login", "timeout", "production", "api")
 `;

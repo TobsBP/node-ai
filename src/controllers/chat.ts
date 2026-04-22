@@ -3,7 +3,9 @@ import { chat_service } from '@/services/chat.js';
 
 export const chat_controller = {
 	async list(
-		request: FastifyRequest<{ Querystring: { limit?: number; offset?: number } }>,
+		request: FastifyRequest<{
+			Querystring: { limit?: number; offset?: number };
+		}>,
 		reply: FastifyReply,
 	) {
 		const { limit = 20, offset = 0 } = request.query;
