@@ -262,7 +262,7 @@ export const ticket_service = {
 
 	async update_status(
 		ticketId: string,
-		status: 'open' | 'in_progress' | 'closed',
+		status: 'open' | 'in_progress' | 'closed' | 'frozen' | 'review',
 	): Promise<{ data: Ticket | null; error: unknown }> {
 		try {
 			const result = await tickets_collection.findOneAndUpdate(

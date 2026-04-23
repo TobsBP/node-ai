@@ -16,7 +16,9 @@ export const ticket_schema = z.object({
 	version: z.string().nullish(),
 	description: z.string().nullish(),
 	file: z.string().nullish(),
-	status: z.enum(['open', 'in_progress', 'closed']).nullish(),
+	status: z
+		.enum(['open', 'in_progress', 'closed', 'review', 'frozen'])
+		.nullish(),
 	createdBy: z.string().nullish(),
 	category: z.enum(['bug', 'infra', 'auth', 'feature', 'other']),
 	severity: z.enum(['critical', 'high', 'medium', 'low']),

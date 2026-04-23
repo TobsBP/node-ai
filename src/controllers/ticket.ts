@@ -232,7 +232,7 @@ export const ticket_controller = {
 	async update_status(
 		request: FastifyRequest<{
 			Params: { id: string };
-			Body: { status: 'open' | 'in_progress' | 'closed' };
+			Body: { status: 'open' | 'in_progress' | 'closed' | 'review' | 'frozen' };
 		}>,
 		reply: FastifyReply,
 	) {

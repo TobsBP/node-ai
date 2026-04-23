@@ -142,7 +142,7 @@ export const ticket_route = async (app: FastifyInstance) => {
 			schema: {
 				params: z.object({ id: z.uuid() }),
 				body: z.object({
-					status: z.enum(['open', 'in_progress', 'closed']),
+					status: z.enum(['open', 'in_progress', 'closed', 'review', 'frozen']),
 				}),
 				response: {
 					200: ticket_schema,
