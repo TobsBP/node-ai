@@ -27,8 +27,42 @@ export const ticket_route = async (app: FastifyInstance) => {
 		ticket_controller.list,
 	);
 
+	app.get(
+		'/ticket/:id',
+		{
+			schema: {
+				params: z.object({ id: z.string().uuid() }),
+				response: {
+					200: ticket_schema,
+					404: z.object({ error: z.string() }),
+					500: z.object({ error: z.string() }),
+				},
+				tags: ['Tickets'],
+				summary: 'Get a single ticket by ID',
+			},
+		},
+		ticket_controller.get_by_id,
+	);
+
+	app.delete(
+		'/ticket/:id',
+		{
+			schema: {
+				params: z.object({ id: z.string().uuid() }),
+				response: {
+					204: z.null(),
+					404: z.object({ error: z.string() }),
+					500: z.object({ error: z.string() }),
+				},
+				tags: ['Tickets'],
+				summary: 'Delete a ticket from MongoDB and Qdrant',
+			},
+		},
+		ticket_controller.delete,
+	);
+
 	app.post(
-		'/tickets',
+		'/ticket',
 		{
 			schema: {
 				consumes: ['multipart/form-data'],
@@ -60,6 +94,46 @@ export const ticket_route = async (app: FastifyInstance) => {
 			},
 		},
 		ticket_controller.classify,
+	);
+
+	app.post(
+		'/tickets/:id/replies',
+		{
+			schema: {
+				params: z.object({ id: z.uuid() }),
+				body: z.object({ content: z.string().min(1) }),
+				response: {
+					201: ticket_schema,
+					400: z.object({ error: z.string() }),
+					404: z.object({ error: z.string() }),
+					500: z.object({ error: z.string() }),
+				},
+				tags: ['Tickets'],
+				summary: 'Add a reply to an existing ticket',
+			},
+		},
+		ticket_controller.reply,
+	);
+
+	app.put(
+		'/ticket/:id/status',
+		{
+			schema: {
+				params: z.object({ id: z.uuid() }),
+				body: z.object({
+					status: z.enum(['open', 'in_progress', 'closed']),
+				}),
+				response: {
+					200: ticket_schema,
+					400: z.object({ error: z.string() }),
+					404: z.object({ error: z.string() }),
+					500: z.object({ error: z.string() }),
+				},
+				tags: ['Tickets'],
+				summary: 'Update ticket status',
+			},
+		},
+		ticket_controller.update_status,
 	);
 
 	app.post(

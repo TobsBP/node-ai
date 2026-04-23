@@ -1,5 +1,12 @@
 import { z } from 'zod';
 
+export const reply_schema = z.object({
+	id: z.string(),
+	content: z.string(),
+	createdBy: z.string(),
+	created_at: z.string(),
+});
+
 export const ticket_schema = z.object({
 	id: z.string(),
 	title: z.string().nullish(),
@@ -18,6 +25,7 @@ export const ticket_schema = z.object({
 	analysis: z.string(),
 	tags: z.array(z.string()),
 	source: z.string().nullish(),
+	replies: z.array(reply_schema).default([]),
 	created_at: z.string(),
 });
 
@@ -32,4 +40,5 @@ export const monday_item_schema = z.object({
 	url: z.string(),
 });
 
+export type Reply = z.infer<typeof reply_schema>;
 export type Ticket = z.infer<typeof ticket_schema>;

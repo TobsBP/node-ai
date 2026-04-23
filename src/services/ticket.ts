@@ -49,6 +49,36 @@ export const ticket_service = {
 		}
 	},
 
+	async get_by_id(
+		id: string,
+	): Promise<{ data: Ticket | null; error: unknown }> {
+		try {
+			const ticket = await tickets_collection.findOne(
+				{ id },
+				{ projection: { _id: 0 } },
+			);
+			return { data: ticket as unknown as Ticket, error: null };
+		} catch (error) {
+			console.error('Error fetching ticket by id:', error);
+			return { data: null, error };
+		}
+	},
+
+	async delete(id: string): Promise<{ success: boolean; error: unknown }> {
+		try {
+			await Promise.all([
+				tickets_collection.deleteOne({ id }),
+				qdrant.delete(TICKETS_COLLECTION, {
+					points: [id],
+				}),
+			]);
+			return { success: true, error: null };
+		} catch (error) {
+			console.error('Error deleting ticket:', error);
+			return { success: false, error };
+		}
+	},
+
 	async classify_for_rag(
 		input: TicketInput,
 	): Promise<{ data: Ticket | null; error: unknown }> {
@@ -92,6 +122,7 @@ export const ticket_service = {
 				...input,
 				status: 'open',
 				source: input.system,
+				replies: [],
 				created_at: new Date().toISOString(),
 				...classification,
 			};
@@ -167,6 +198,54 @@ export const ticket_service = {
 			return { data: tickets, error: null };
 		} catch (error) {
 			console.error('Error searching tickets:', error);
+			return { data: null, error };
+		}
+	},
+
+	async add_reply(
+		ticketId: string,
+		content: string,
+		createdBy: string,
+	): Promise<{ data: Ticket | null; error: unknown }> {
+		try {
+			const reply = {
+				id: randomUUID(),
+				content,
+				createdBy,
+				created_at: new Date().toISOString(),
+			};
+
+			const result = await tickets_collection.findOneAndUpdate(
+				{ id: ticketId },
+				{ $push: { replies: reply } },
+				{ returnDocument: 'after', projection: { _id: 0 } },
+			);
+
+			if (!result) return { data: null, error: 'Ticket not found' };
+
+			return { data: result as Ticket, error: null };
+		} catch (error) {
+			console.error('Error adding reply:', error);
+			return { data: null, error };
+		}
+	},
+
+	async update_status(
+		ticketId: string,
+		status: 'open' | 'in_progress' | 'closed',
+	): Promise<{ data: Ticket | null; error: unknown }> {
+		try {
+			const result = await tickets_collection.findOneAndUpdate(
+				{ id: ticketId },
+				{ $set: { status } },
+				{ returnDocument: 'after', projection: { _id: 0 } },
+			);
+
+			if (!result) return { data: null, error: 'Ticket not found' };
+
+			return { data: result as Ticket, error: null };
+		} catch (error) {
+			console.error('Error updating status:', error);
 			return { data: null, error };
 		}
 	},
