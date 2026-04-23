@@ -18,7 +18,7 @@ export const ticket_route = async (app: FastifyInstance) => {
 				}),
 				response: {
 					200: z.array(ticket_schema),
-					500: z.object({ error: z.unknown() }),
+					500: z.object({ error: z.string() }),
 				},
 				tags: ['Tickets'],
 				summary: 'List all tickets saved in MongoDB',
@@ -72,7 +72,7 @@ export const ticket_route = async (app: FastifyInstance) => {
 				}),
 				response: {
 					200: z.array(ticket_schema),
-					500: z.object({ error: z.unknown() }),
+					500: z.object({ error: z.string() }),
 				},
 				tags: ['Tickets'],
 				summary: 'Search similar tickets by semantic similarity',

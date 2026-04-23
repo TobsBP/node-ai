@@ -9,9 +9,12 @@ export const ticket_controller = {
 		}>,
 		reply: FastifyReply,
 	) {
-		const { limit = 20, offset = 0 } = request.query;
+    const { limit = 20, offset = 0 } = request.query;
 		const { data, error } = await ticket_service.list(limit, offset);
-		if (error) return reply.status(500).send({ error });
+		
+    console.log(data)
+    
+    if (error) return reply.status(500).send({ error: error instanceof Error ? error.message : String(error) });
 		return reply.status(200).send(data);
 	},
 
@@ -31,18 +34,14 @@ export const ticket_controller = {
 		}
 
 		const fields: Record<string, string> = {};
-		let fileName: string | undefined;
 
 		for await (const part of request.parts()) {
-			if (part.type === 'file') {
-				await part.toBuffer();
-				fileName = part.filename;
-			} else {
+			if (part.type === 'field') {
 				fields[part.fieldname] = part.value as string;
 			}
 		}
 
-		const { title, system, studentId, deviceModel, version, description } =
+		const { title, system, studentId, deviceModel, version, description, file } =
 			fields;
 
 		if (!title || !system || !studentId) {
@@ -58,7 +57,7 @@ export const ticket_controller = {
 			deviceModel,
 			version,
 			description,
-			file: fileName,
+			file,
 			createdBy,
 		});
 
@@ -83,7 +82,7 @@ export const ticket_controller = {
 		const { message } = request.body;
 		const limit = request.query.limit ?? 5;
 		const { data, error } = await ticket_service.search_similar(message, limit);
-		if (error) return reply.status(500).send({ error });
+		if (error) return reply.status(500).send({ error: error instanceof Error ? error.message : String(error) });
 		return reply.status(200).send(data);
 	},
 };
