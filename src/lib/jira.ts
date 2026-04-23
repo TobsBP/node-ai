@@ -55,6 +55,25 @@ export async function create_jira_issue(
 									},
 								],
 							},
+							...(ticket.file
+								? [
+										{
+											type: 'paragraph',
+											content: [
+												{
+													type: 'text',
+													text: `Attached File: ${ticket.file}`,
+													marks: [
+														{
+															type: 'link',
+															attrs: { href: ticket.file },
+														},
+													],
+												},
+											],
+										},
+									]
+								: []),
 						],
 					},
 					priority: { name: SEVERITY_TO_PRIORITY[ticket.severity] },

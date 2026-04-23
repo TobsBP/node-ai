@@ -97,6 +97,27 @@ export const ticket_route = async (app: FastifyInstance) => {
 	);
 
 	app.post(
+		'/ticket/jira',
+		{
+			schema: {
+				consumes: ['multipart/form-data'],
+				response: {
+					201: z.object({
+						ticket: ticket_schema,
+						jira: jira_issue_schema.nullable(),
+					}),
+					400: z.object({ error: z.string() }),
+					429: z.object({ error: z.string() }),
+					500: z.object({ error: z.unknown() }),
+				},
+				tags: ['Tickets'],
+				summary: 'Classify a ticket and save ONLY to Jira (no Monday)',
+			},
+		},
+		ticket_controller.classify_jira_only,
+	);
+
+	app.post(
 		'/tickets/:id/replies',
 		{
 			schema: {

@@ -12,8 +12,6 @@ export const ticket_controller = {
 		const { limit = 20, offset = 0 } = request.query;
 		const { data, error } = await ticket_service.list(limit, offset);
 
-		console.log(data);
-
 		if (error)
 			return reply.status(500).send({
 				error: error instanceof Error ? error.message : String(error),
@@ -114,6 +112,68 @@ export const ticket_controller = {
 			file,
 			createdBy,
 		});
+
+		if (error) {
+			const e = error as Record<string, unknown>;
+			if (e?.status === 429)
+				return reply.status(429).send({ error: 'Limite de uso atingido' });
+			return reply.status(500).send({ error });
+		}
+		if (!data)
+			return reply.status(400).send({ error: 'Classification failed' });
+		return reply.status(201).send(data);
+	},
+
+	async classify_jira_only(request: FastifyRequest, reply: FastifyReply) {
+		const authHeader = request.headers.authorization;
+		if (!authHeader?.startsWith('Bearer ')) {
+			return reply
+				.status(401)
+				.send({ error: 'Missing or invalid authorization header' });
+		}
+
+		let createdBy: string;
+		try {
+			createdBy = await verify_firebase_token(authHeader.slice(7));
+		} catch {
+			return reply.status(401).send({ error: 'Invalid or expired token' });
+		}
+
+		const fields: Record<string, string> = {};
+
+		for await (const part of request.parts()) {
+			if (part.type === 'field') {
+				fields[part.fieldname] = part.value as string;
+			}
+		}
+
+		const {
+			title,
+			system,
+			studentId,
+			deviceModel,
+			version,
+			description,
+			file,
+		} = fields;
+
+		if (!title || !system || !studentId) {
+			return reply
+				.status(400)
+				.send({ error: 'title, system and studentId are required' });
+		}
+
+		const { data, error } =
+			await ticket_service.classify_save_and_create_jira_only({
+				title,
+				system,
+				studentId,
+				deviceModel,
+				version,
+				description,
+				file,
+				createdBy,
+			});
 
 		if (error) {
 			const e = error as Record<string, unknown>;

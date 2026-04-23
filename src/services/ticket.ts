@@ -180,6 +180,24 @@ export const ticket_service = {
 		return { data: { ticket, jira, monday }, error: null };
 	},
 
+	async classify_save_and_create_jira_only(input: TicketInput): Promise<{
+		data: {
+			ticket: Ticket;
+			jira: JiraCreatedIssue | null;
+		} | null;
+		error: unknown;
+	}> {
+		const { data: ticket, error } = await this.classify_and_save(input);
+		if (error || !ticket)
+			return { data: null, error: error ?? 'Classification failed' };
+
+		const { data: jira, error: jira_error } = await create_jira_issue(ticket);
+
+		if (jira_error) console.error('Jira issue creation failed:', jira_error);
+
+		return { data: { ticket, jira }, error: null };
+	},
+
 	async search_similar(
 		message: string,
 		limit = 5,
@@ -194,7 +212,19 @@ export const ticket_service = {
 				with_payload: true,
 			});
 
-			const tickets = results.points.map((p) => p.payload as Ticket);
+			const ids = results.points.map((p) => p.id as string);
+			if (ids.length === 0) return { data: [], error: null };
+
+			// Busca no Mongo para garantir que o ticket ainda existe
+			const mongoTickets = await tickets_collection
+				.find({ id: { $in: ids } }, { projection: { _id: 0 } })
+				.toArray();
+
+			// Mapeia para manter a ordem de similaridade do Qdrant
+			const tickets = ids
+				.map((id) => mongoTickets.find((t) => t.id === id))
+				.filter((t) => !!t) as unknown as Ticket[];
+
 			return { data: tickets, error: null };
 		} catch (error) {
 			console.error('Error searching tickets:', error);
