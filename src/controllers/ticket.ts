@@ -112,7 +112,6 @@ export const ticket_controller = {
 			description,
 			file,
 			createdBy,
-			responsible_dev,
 		});
 
 		if (error) {
@@ -157,7 +156,6 @@ export const ticket_controller = {
 			version,
 			description,
 			file,
-			responsible_dev,
 		} = fields;
 
 		if (!title || !system || !studentId) {
@@ -176,7 +174,6 @@ export const ticket_controller = {
 				description,
 				file,
 				createdBy,
-				responsible_dev,
 			});
 
 		if (error) {
