@@ -3,6 +3,7 @@ import { z } from 'zod';
 export const reply_schema = z.object({
 	id: z.string(),
 	content: z.string(),
+	file: z.string().nullish(),
 	createdBy: z.string(),
 	created_at: z.string(),
 });
@@ -26,6 +27,7 @@ export const ticket_schema = z.object({
 	summary: z.string(),
 	analysis: z.string(),
 	tags: z.array(z.string()),
+	responsible_dev: z.string().nullish(),
 	source: z.string().nullish(),
 	replies: z.array(reply_schema).default([]),
 	created_at: z.string(),

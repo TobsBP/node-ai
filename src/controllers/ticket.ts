@@ -94,6 +94,7 @@ export const ticket_controller = {
 			version,
 			description,
 			file,
+			responsible_dev,
 		} = fields;
 
 		if (!title || !system || !studentId) {
@@ -111,6 +112,7 @@ export const ticket_controller = {
 			description,
 			file,
 			createdBy,
+			responsible_dev,
 		});
 
 		if (error) {
@@ -155,6 +157,7 @@ export const ticket_controller = {
 			version,
 			description,
 			file,
+			responsible_dev,
 		} = fields;
 
 		if (!title || !system || !studentId) {
@@ -173,6 +176,7 @@ export const ticket_controller = {
 				description,
 				file,
 				createdBy,
+				responsible_dev,
 			});
 
 		if (error) {
@@ -189,7 +193,6 @@ export const ticket_controller = {
 	async reply(
 		request: FastifyRequest<{
 			Params: { id: string };
-			Body: { content: string };
 		}>,
 		reply: FastifyReply,
 	) {
@@ -208,7 +211,15 @@ export const ticket_controller = {
 		}
 
 		const { id } = request.params;
-		const { content } = request.body;
+		const fields: Record<string, string> = {};
+
+		for await (const part of request.parts()) {
+			if (part.type === 'field') {
+				fields[part.fieldname] = part.value as string;
+			}
+		}
+
+		const { content, file } = fields;
 
 		if (!content) {
 			return reply.status(400).send({ error: 'Content is required' });
@@ -218,6 +229,7 @@ export const ticket_controller = {
 			id,
 			content,
 			createdBy,
+			file,
 		);
 
 		if (error) {

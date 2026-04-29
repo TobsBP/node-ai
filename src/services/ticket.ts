@@ -6,6 +6,7 @@ import { tickets_collection } from '@/lib/mongo.js';
 import { ensure_collection, qdrant, TICKETS_COLLECTION } from '@/lib/qdrant.js';
 import type { Ticket } from '@/types/ticket.js';
 import { CLASSIFY_PROMPT } from '@/utils/consts/classify_prompt.js';
+import { AREA_TO_ASSIGNEE } from '@/utils/consts/jira.js';
 
 type TicketInput = Pick<
 	Ticket,
@@ -125,6 +126,9 @@ export const ticket_service = {
 				replies: [],
 				created_at: new Date().toISOString(),
 				...classification,
+				responsible_dev: classification.area
+					? AREA_TO_ASSIGNEE[classification.area]
+					: undefined,
 			};
 
 			await qdrant.upsert(TICKETS_COLLECTION, {
@@ -236,11 +240,13 @@ export const ticket_service = {
 		ticketId: string,
 		content: string,
 		createdBy: string,
+		file?: string,
 	): Promise<{ data: Ticket | null; error: unknown }> {
 		try {
 			const reply = {
 				id: randomUUID(),
 				content,
+				file,
 				createdBy,
 				created_at: new Date().toISOString(),
 			};

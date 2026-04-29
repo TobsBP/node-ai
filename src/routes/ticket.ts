@@ -90,6 +90,7 @@ export const ticket_route = async (app: FastifyInstance) => {
 					'- `version` — app/system version (max 20 chars)',
 					'- `description` — issue description (max 2000 chars)',
 					'- `file` — image or file (JPG, PNG, WEBP, PDF, TXT — max 10 MB)',
+					'- `responsible_dev` — the developer responsible for the ticket',
 				].join('\n'),
 			},
 		},
@@ -121,8 +122,8 @@ export const ticket_route = async (app: FastifyInstance) => {
 		'/tickets/:id/replies',
 		{
 			schema: {
+				consumes: ['multipart/form-data'],
 				params: z.object({ id: z.uuid() }),
-				body: z.object({ content: z.string().min(1) }),
 				response: {
 					201: ticket_schema,
 					400: z.object({ error: z.string() }),
