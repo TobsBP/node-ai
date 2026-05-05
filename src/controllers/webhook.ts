@@ -16,6 +16,8 @@ export const webhook_controller = {
 
 		const payload = request.body as JiraWebhookPayload;
 
+    console.log(payload)
+		
 		if (payload.webhookEvent !== 'jira:issue_updated') {
 			return reply.status(200).send({ ignored: true });
 		}
