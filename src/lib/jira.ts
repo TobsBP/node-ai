@@ -12,6 +12,7 @@ const JIRA_BASE_URL = process.env.JIRA_BASE_URL as string;
 const JIRA_EMAIL = process.env.JIRA_EMAIL as string;
 const JIRA_API_TOKEN = process.env.JIRA_API_TOKEN as string;
 const JIRA_PROJECT_KEY = process.env.JIRA_PROJECT_KEY as string;
+const FRONTEND_BASE_URL = process.env.FRONTEND_BASE_URL as string;
 
 if (!JIRA_BASE_URL || !JIRA_EMAIL || !JIRA_API_TOKEN || !JIRA_PROJECT_KEY) {
 	throw new Error(
@@ -67,6 +68,48 @@ export async function create_jira_issue(
 														{
 															type: 'link',
 															attrs: { href: ticket.file },
+														},
+													],
+												},
+											],
+										},
+									]
+								: []),
+							...(FRONTEND_BASE_URL
+								? [
+										{
+											type: 'paragraph',
+											content: [
+												{
+													type: 'text',
+													text: 'Ver ticket no backoffice',
+													marks: [
+														{
+															type: 'link',
+															attrs: {
+																href: `${FRONTEND_BASE_URL}/tickets?ticket=${ticket.id}`,
+															},
+														},
+													],
+												},
+											],
+										},
+									]
+								: []),
+							...(FRONTEND_BASE_URL && ticket.studentId
+								? [
+										{
+											type: 'paragraph',
+											content: [
+												{
+													type: 'text',
+													text: 'Ver perfil da aluna',
+													marks: [
+														{
+															type: 'link',
+															attrs: {
+																href: `${FRONTEND_BASE_URL}/alunas/${ticket.studentId}`,
+															},
 														},
 													],
 												},
