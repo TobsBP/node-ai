@@ -94,7 +94,7 @@ export const ticket_controller = {
 			version,
 			description,
 			file,
-			responsible_dev,
+			_responsible_dev,
 		} = fields;
 
 		if (!title || !system || !studentId) {
@@ -245,10 +245,28 @@ export const ticket_controller = {
 		}>,
 		reply: FastifyReply,
 	) {
+		const authHeader = request.headers.authorization;
+		if (!authHeader?.startsWith('Bearer ')) {
+			return reply
+				.status(401)
+				.send({ error: 'Missing or invalid authorization header' });
+		}
+
+		let changedBy: string;
+		try {
+			changedBy = await verify_firebase_token(authHeader.slice(7));
+		} catch {
+			return reply.status(401).send({ error: 'Invalid or expired token' });
+		}
+
 		const { id } = request.params;
 		const { status } = request.body;
 
-		const { data, error } = await ticket_service.update_status(id, status);
+		const { data, error } = await ticket_service.update_status(
+			id,
+			status,
+			changedBy,
+		);
 
 		if (error) {
 			return reply.status(error === 'Ticket not found' ? 404 : 500).send({

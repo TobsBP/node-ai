@@ -8,6 +8,15 @@ export const reply_schema = z.object({
 	created_at: z.string(),
 });
 
+export const audit_entry_schema = z.object({
+	id: z.string(),
+	field: z.string(),
+	old_value: z.any().nullish(),
+	new_value: z.any().nullish(),
+	changedBy: z.string(),
+	changed_at: z.string(),
+});
+
 export const ticket_schema = z.object({
 	id: z.string(),
 	title: z.string().nullish(),
@@ -29,7 +38,9 @@ export const ticket_schema = z.object({
 	tags: z.array(z.string()),
 	responsible_dev: z.string().nullish(),
 	source: z.string().nullish(),
+	jira_key: z.string().nullish(),
 	replies: z.array(reply_schema).default([]),
+	audit: z.array(audit_entry_schema).default([]),
 	created_at: z.string(),
 });
 
@@ -45,4 +56,5 @@ export const monday_item_schema = z.object({
 });
 
 export type Reply = z.infer<typeof reply_schema>;
+export type AuditEntry = z.infer<typeof audit_entry_schema>;
 export type Ticket = z.infer<typeof ticket_schema>;

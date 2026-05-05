@@ -1,7 +1,7 @@
+import type { MondayCreatedItem } from '@/types/monday.js';
 import type { Ticket } from '@/types/ticket.js';
 import {
 	AREA_TO_MONDAY_ASSIGNEE,
-	type MondayCreatedItem,
 	SEVERITY_TO_STATUS,
 } from '@/utils/consts/monday.js';
 

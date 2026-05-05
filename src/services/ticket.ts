@@ -124,6 +124,16 @@ export const ticket_service = {
 				status: 'open',
 				source: input.system,
 				replies: [],
+				audit: [
+					{
+						id: randomUUID(),
+						field: 'ticket',
+						old_value: null,
+						new_value: 'created',
+						changedBy: input.createdBy ?? 'unknown',
+						changed_at: new Date().toISOString(),
+					},
+				],
 				created_at: new Date().toISOString(),
 				...classification,
 				responsible_dev: classification.area
@@ -181,6 +191,14 @@ export const ticket_service = {
 		if (monday_error)
 			console.error('Monday item creation failed:', monday_error);
 
+		if (jira) {
+			ticket.jira_key = jira.key;
+			await tickets_collection.updateOne(
+				{ id: ticket.id },
+				{ $set: { jira_key: jira.key } },
+			);
+		}
+
 		return { data: { ticket, jira, monday }, error: null };
 	},
 
@@ -198,6 +216,14 @@ export const ticket_service = {
 		const { data: jira, error: jira_error } = await create_jira_issue(ticket);
 
 		if (jira_error) console.error('Jira issue creation failed:', jira_error);
+
+		if (jira) {
+			ticket.jira_key = jira.key;
+			await tickets_collection.updateOne(
+				{ id: ticket.id },
+				{ $set: { jira_key: jira.key } },
+			);
+		}
 
 		return { data: { ticket, jira }, error: null };
 	},
@@ -266,20 +292,98 @@ export const ticket_service = {
 		}
 	},
 
-	async update_status(
-		ticketId: string,
+	async update_status_by_jira_key(
+		jira_key: string,
 		status: 'open' | 'in_progress' | 'closed' | 'frozen' | 'review',
 	): Promise<{ data: Ticket | null; error: unknown }> {
 		try {
+			const ticket = await tickets_collection.findOne({ jira_key });
+			if (!ticket) return { data: null, error: 'Ticket not found' };
+
+			const audit_entry = {
+				id: randomUUID(),
+				field: 'status',
+				old_value: ticket.status,
+				new_value: status,
+				changedBy: 'jira-webhook',
+				changed_at: new Date().toISOString(),
+			};
+
 			const result = await tickets_collection.findOneAndUpdate(
-				{ id: ticketId },
-				{ $set: { status } },
+				{ jira_key },
+				{
+					$set: { status },
+					$push: { audit: audit_entry },
+				},
+				{ returnDocument: 'after', projection: { _id: 0 } },
+			);
+
+			return { data: result as unknown as Ticket, error: null };
+		} catch (error) {
+			console.error('Error updating status by jira_key:', error);
+			return { data: null, error };
+		}
+	},
+
+	async update_responsible_dev_by_jira_key(
+		jira_key: string,
+		responsible_dev: string,
+	): Promise<{ data: Ticket | null; error: unknown }> {
+		try {
+			const result = await tickets_collection.findOneAndUpdate(
+				{ jira_key },
+				{
+					$set: { responsible_dev },
+					$push: {
+						audit: {
+							id: randomUUID(),
+							field: 'responsible_dev',
+							old_value: null,
+							new_value: responsible_dev,
+							changedBy: 'jira-webhook',
+							changed_at: new Date().toISOString(),
+						},
+					},
+				},
 				{ returnDocument: 'after', projection: { _id: 0 } },
 			);
 
 			if (!result) return { data: null, error: 'Ticket not found' };
+			return { data: result as unknown as Ticket, error: null };
+		} catch (error) {
+			console.error('Error updating responsible_dev by jira_key:', error);
+			return { data: null, error };
+		}
+	},
 
-			return { data: result as Ticket, error: null };
+	async update_status(
+		ticketId: string,
+		status: 'open' | 'in_progress' | 'closed' | 'frozen' | 'review',
+		changedBy: string,
+	): Promise<{ data: Ticket | null; error: unknown }> {
+		try {
+			const ticket = await tickets_collection.findOne({ id: ticketId });
+			if (!ticket) return { data: null, error: 'Ticket not found' };
+
+			const audit_entry = {
+				id: randomUUID(),
+				field: 'status',
+				old_value: ticket.status,
+				new_value: status,
+				changedBy,
+				changed_at: new Date().toISOString(),
+			};
+
+			const result = await tickets_collection.findOneAndUpdate(
+				{ id: ticketId },
+				{
+					$set: { status },
+					$push: { audit: audit_entry },
+				},
+				{ returnDocument: 'after', projection: { _id: 0 } },
+			);
+
+			return { data: result as unknown as Ticket, error: null };
 		} catch (error) {
 			console.error('Error updating status:', error);
 			return { data: null, error };

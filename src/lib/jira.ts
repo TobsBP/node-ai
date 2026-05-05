@@ -1,8 +1,8 @@
+import type { JiraCreatedIssue } from '@/types/jira.js';
 import type { Ticket } from '@/types/ticket.js';
 import {
 	AREA_TO_ASSIGNEE,
 	CATEGORY_TO_ISSUE_TYPE,
-	type JiraCreatedIssue,
 	SEVERITY_TO_PRIORITY,
 } from '@/utils/consts/jira.js';
 
