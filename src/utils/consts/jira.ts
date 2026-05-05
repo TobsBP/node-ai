@@ -41,6 +41,18 @@ export const JIRA_STATUS_MAP: Record<string, Ticket['status']> = {
 	frozen: 'frozen',
 };
 
-export function map_jira_status(jira_status: string): Ticket['status'] | null {
-	return JIRA_STATUS_MAP[jira_status.toLowerCase()] ?? null;
+const JIRA_CATEGORY_MAP: Record<string, Ticket['status']> = {
+	new: 'open',
+	indeterminate: 'in_progress',
+	done: 'closed',
+};
+
+export function map_jira_status(
+	jira_status: string,
+	category_key?: string,
+): Ticket['status'] | null {
+	return (
+		JIRA_STATUS_MAP[jira_status.toLowerCase()] ??
+		(category_key ? (JIRA_CATEGORY_MAP[category_key] ?? null) : null)
+	);
 }

@@ -9,7 +9,10 @@ export type JiraWebhookPayload = {
 	issue?: {
 		key: string;
 		fields?: {
-			status?: { name: string };
+			status?: {
+				name: string;
+				statusCategory?: { key: string };
+			};
 		};
 	};
 	changelog?: {
