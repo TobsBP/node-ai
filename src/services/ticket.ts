@@ -7,6 +7,7 @@ import { ensure_collection, qdrant, TICKETS_COLLECTION } from '@/lib/qdrant.js';
 import type { Ticket } from '@/types/ticket.js';
 import { CLASSIFY_PROMPT } from '@/utils/consts/classify_prompt.js';
 import { AREA_TO_ASSIGNEE } from '@/utils/consts/jira.js';
+import { notification_service } from '@/services/notification.js';
 
 type TicketInput = Pick<
 	Ticket,
@@ -287,7 +288,17 @@ export const ticket_service = {
 
 			if (!result) return { data: null, error: 'Ticket not found' };
 
-			return { data: result as Ticket, error: null };
+			const updated = result as Ticket;
+			if (updated.createdBy && updated.createdBy !== createdBy) {
+				await notification_service.create({
+					userId: updated.createdBy,
+					ticketId: updated.id,
+					type: 'new_reply',
+					message: 'Seu ticket recebeu uma nova resposta.',
+				});
+			}
+
+			return { data: updated, error: null };
 		} catch (error) {
 			console.error('Error adding reply:', error);
 			return { data: null, error };
@@ -319,6 +330,15 @@ export const ticket_service = {
 				},
 				{ returnDocument: 'after', projection: { _id: 0 } },
 			);
+
+			if (result && ticket.createdBy) {
+				await notification_service.create({
+					userId: ticket.createdBy,
+					ticketId: ticket.id,
+					type: 'status_change',
+					message: `O status do seu ticket foi atualizado para "${status}".`,
+				});
+			}
 
 			return { data: result as unknown as Ticket, error: null };
 		} catch (error) {
@@ -353,6 +373,15 @@ export const ticket_service = {
 				{ returnDocument: 'after', projection: { _id: 0 } },
 			);
 
+			if (result && ticket.createdBy) {
+				await notification_service.create({
+					userId: ticket.createdBy,
+					ticketId: ticket.id,
+					type: 'assignee_change',
+					message: `O responsável pelo seu ticket foi atualizado para "${responsible_dev}".`,
+				});
+			}
+
 			return { data: result as unknown as Ticket, error: null };
 		} catch (error) {
 			console.error('Error updating responsible_dev by jira_key:', error);
@@ -386,6 +415,15 @@ export const ticket_service = {
 				},
 				{ returnDocument: 'after', projection: { _id: 0 } },
 			);
+
+			if (ticket.createdBy && ticket.createdBy !== changedBy) {
+				await notification_service.create({
+					userId: ticket.createdBy,
+					ticketId,
+					type: 'status_change',
+					message: `O status do seu ticket foi atualizado para "${status}".`,
+				});
+			}
 
 			return { data: result as unknown as Ticket, error: null };
 		} catch (error) {
