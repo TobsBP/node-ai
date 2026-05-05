@@ -3,6 +3,10 @@ import { QdrantClient } from '@qdrant/js-client-rest';
 const url_qdrant = process.env.QDRANT_URL;
 const key_qdrant = process.env.QDRANT_API_KEY;
 
+if (!url_qdrant || !key_qdrant) {
+	throw new Error('QDRANT_URL and QDRANT_API_KEY must be set');
+}
+
 export const qdrant = new QdrantClient({ url: url_qdrant, apiKey: key_qdrant });
 
 export const TICKETS_COLLECTION = 'tickets';
