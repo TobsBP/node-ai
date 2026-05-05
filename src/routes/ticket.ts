@@ -15,6 +15,7 @@ export const ticket_route = async (app: FastifyInstance) => {
 				querystring: z.object({
 					limit: z.coerce.number().int().min(1).max(100).optional(),
 					offset: z.coerce.number().int().min(0).optional(),
+					createdBy: z.string().optional(),
 				}),
 				response: {
 					200: z.array(ticket_schema),

@@ -5,12 +5,12 @@ import { ticket_service } from '@/services/ticket.js';
 export const ticket_controller = {
 	async list(
 		request: FastifyRequest<{
-			Querystring: { limit?: number; offset?: number };
+			Querystring: { limit?: number; offset?: number; createdBy?: string };
 		}>,
 		reply: FastifyReply,
 	) {
-		const { limit = 20, offset = 0 } = request.query;
-		const { data, error } = await ticket_service.list(limit, offset);
+		const { limit = 20, offset = 0, createdBy } = request.query;
+		const { data, error } = await ticket_service.list(limit, offset, createdBy);
 
 		if (error)
 			return reply.status(500).send({

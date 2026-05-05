@@ -35,10 +35,12 @@ export const ticket_service = {
 	async list(
 		limit = 20,
 		offset = 0,
+		createdBy?: string,
 	): Promise<{ data: Ticket[] | null; error: unknown }> {
 		try {
+			const filter = createdBy ? { createdBy } : {};
 			const data = await tickets_collection
-				.find({}, { projection: { _id: 0 } })
+				.find(filter, { projection: { _id: 0 } })
 				.sort({ created_at: -1 })
 				.skip(offset)
 				.limit(limit)
