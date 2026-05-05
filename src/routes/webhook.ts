@@ -7,7 +7,6 @@ export const webhook_route = async (app: FastifyInstance) => {
 		'/webhooks/jira',
 		{
 			schema: {
-				querystring: z.object({ token: z.string().optional() }),
 				response: {
 					200: z.object({
 						updated: z.boolean().optional(),
@@ -16,7 +15,6 @@ export const webhook_route = async (app: FastifyInstance) => {
 						reason: z.string().optional(),
 					}),
 					400: z.object({ error: z.string() }),
-					401: z.object({ error: z.string() }),
 					404: z.object({ error: z.string() }),
 					500: z.object({ error: z.string() }),
 				},

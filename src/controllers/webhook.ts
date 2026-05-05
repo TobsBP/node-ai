@@ -3,21 +3,10 @@ import { ticket_service } from '@/services/ticket.js';
 import type { JiraWebhookPayload } from '@/types/jira.js';
 import { map_jira_status } from '@/utils/consts/jira.js';
 
-const JIRA_WEBHOOK_SECRET = process.env.JIRA_WEBHOOK_SECRET;
-
 export const webhook_controller = {
-	async jira(
-		request: FastifyRequest<{ Querystring: { token?: string } }>,
-		reply: FastifyReply,
-	) {
-		if (JIRA_WEBHOOK_SECRET && request.query.token !== JIRA_WEBHOOK_SECRET) {
-			return reply.status(401).send({ error: 'Unauthorized' });
-		}
-
+	async jira(request: FastifyRequest, reply: FastifyReply) {
 		const payload = request.body as JiraWebhookPayload;
 
-    
-		
 		if (payload.webhookEvent !== 'jira:issue_updated') {
 			return reply.status(200).send({ ignored: true });
 		}
@@ -25,9 +14,8 @@ export const webhook_controller = {
 		const jira_key = payload.issue?.key;
 		if (!jira_key) {
 			return reply.status(400).send({ error: 'Missing issue key' });
-    }
+		}
 
-    
 		const status_change = payload.changelog?.items.find(
 			(item) => item.field === 'status',
 		);
@@ -52,8 +40,7 @@ export const webhook_controller = {
 			const { data, error } = await ticket_service.update_status_by_jira_key(
 				jira_key,
 				status,
-      );
-
+			);
 
 			if (error === 'Ticket not found') {
 				return reply

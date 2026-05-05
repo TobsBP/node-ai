@@ -330,6 +330,9 @@ export const ticket_service = {
 		responsible_dev: string,
 	): Promise<{ data: Ticket | null; error: unknown }> {
 		try {
+			const ticket = await tickets_collection.findOne({ jira_key });
+			if (!ticket) return { data: null, error: 'Ticket not found' };
+
 			const result = await tickets_collection.findOneAndUpdate(
 				{ jira_key },
 				{
@@ -338,7 +341,7 @@ export const ticket_service = {
 						audit: {
 							id: randomUUID(),
 							field: 'responsible_dev',
-							old_value: null,
+							old_value: ticket.responsible_dev ?? null,
 							new_value: responsible_dev,
 							changedBy: 'jira-webhook',
 							changed_at: new Date().toISOString(),
@@ -348,7 +351,6 @@ export const ticket_service = {
 				{ returnDocument: 'after', projection: { _id: 0 } },
 			);
 
-			if (!result) return { data: null, error: 'Ticket not found' };
 			return { data: result as unknown as Ticket, error: null };
 		} catch (error) {
 			console.error('Error updating responsible_dev by jira_key:', error);
