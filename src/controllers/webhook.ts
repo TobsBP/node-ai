@@ -16,7 +16,7 @@ export const webhook_controller = {
 
 		const payload = request.body as JiraWebhookPayload;
 
-    console.log(payload)
+    console.log(payload.webhookEvent)
 		
 		if (payload.webhookEvent !== 'jira:issue_updated') {
 			return reply.status(200).send({ ignored: true });
@@ -25,7 +25,9 @@ export const webhook_controller = {
 		const jira_key = payload.issue?.key;
 		if (!jira_key) {
 			return reply.status(400).send({ error: 'Missing issue key' });
-		}
+    }
+
+    console.log(jira_key)
 
 		const status_change = payload.changelog?.items.find(
 			(item) => item.field === 'status',
@@ -50,7 +52,9 @@ export const webhook_controller = {
 			const { data, error } = await ticket_service.update_status_by_jira_key(
 				jira_key,
 				status,
-			);
+      );
+
+			console.log(data)
 
 			if (error === 'Ticket not found') {
 				return reply
