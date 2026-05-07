@@ -15,15 +15,6 @@ export const CATEGORY_TO_ISSUE_TYPE: Record<Ticket['category'], string> = {
 	other: 'Task',
 };
 
-export const AREA_TO_ASSIGNEE: Record<
-	NonNullable<Ticket['area']>,
-	string | undefined
-> = {
-	backend: process.env.JIRA_ASSIGNEE_BACKEND,
-	frontend: process.env.JIRA_ASSIGNEE_FRONTEND,
-	fullstack: process.env.JIRA_ASSIGNEE_BACKEND,
-};
-
 export const JIRA_STATUS_MAP: Record<string, Ticket['status']> = {
 	'to do': 'open',
 	backlog: 'open',

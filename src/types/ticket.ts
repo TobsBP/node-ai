@@ -25,7 +25,9 @@ export const ticket_schema = z.object({
 	deviceModel: z.string().nullish(),
 	version: z.string().nullish(),
 	description: z.string().nullish(),
-	file: z.string().nullish(),
+	file: z
+		.union([z.array(z.string()), z.string().transform((s) => [s])])
+		.nullish(),
 	status: z
 		.enum(['open', 'in_progress', 'closed', 'review', 'frozen'])
 		.nullish(),
@@ -47,11 +49,6 @@ export const ticket_schema = z.object({
 export const jira_issue_schema = z.object({
 	id: z.string(),
 	key: z.string(),
-	url: z.string(),
-});
-
-export const monday_item_schema = z.object({
-	id: z.string(),
 	url: z.string(),
 });
 

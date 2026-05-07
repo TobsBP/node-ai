@@ -1,7 +1,6 @@
-import type { JiraCreatedIssue } from '@/types/jira.js';
+import type { JiraCreatedIssue, JiraDev } from '@/types/jira.js';
 import type { Ticket } from '@/types/ticket.js';
 import {
-	AREA_TO_ASSIGNEE,
 	CATEGORY_TO_ISSUE_TYPE,
 	SEVERITY_TO_PRIORITY,
 } from '@/utils/consts/jira.js';
@@ -24,6 +23,7 @@ const auth = Buffer.from(`${JIRA_EMAIL}:${JIRA_API_TOKEN}`).toString('base64');
 
 export async function create_jira_issue(
 	ticket: Ticket,
+	assigneeAccountId: string,
 ): Promise<{ data: JiraCreatedIssue | null; error: unknown }> {
 	try {
 		const response = await fetch(`${JIRA_BASE_URL}/rest/api/3/issue`, {
@@ -56,24 +56,22 @@ export async function create_jira_issue(
 									},
 								],
 							},
-							...(ticket.file
-								? [
-										{
-											type: 'paragraph',
-											content: [
-												{
-													type: 'text',
-													text: `Attached File: ${ticket.file}`,
-													marks: [
-														{
-															type: 'link',
-															attrs: { href: ticket.file },
-														},
-													],
-												},
-											],
-										},
-									]
+							...(ticket.file && ticket.file.length > 0
+								? ticket.file.map((url, i) => ({
+										type: 'paragraph',
+										content: [
+											{
+												type: 'text',
+												text: `Attached File ${i + 1}: ${url}`,
+												marks: [
+													{
+														type: 'link',
+														attrs: { href: url },
+													},
+												],
+											},
+										],
+									}))
 								: []),
 							...(FRONTEND_BASE_URL
 								? [
@@ -121,10 +119,7 @@ export async function create_jira_issue(
 					},
 					priority: { name: SEVERITY_TO_PRIORITY[ticket.severity] },
 					labels: ticket.tags,
-					...(ticket.area &&
-						AREA_TO_ASSIGNEE[ticket.area] && {
-							assignee: { accountId: AREA_TO_ASSIGNEE[ticket.area] },
-						}),
+					assignee: { accountId: assigneeAccountId },
 				},
 			}),
 		});
@@ -153,6 +148,99 @@ export async function create_jira_issue(
 		};
 	} catch (error) {
 		console.error('Error creating Jira issue:', error);
+		return { data: null, error };
+	}
+}
+
+export async function get_jira_dev(accountId: string): Promise<{
+	data: (JiraDev & { emailAddress?: string; active?: boolean }) | null;
+	error: unknown;
+}> {
+	try {
+		const url = `${JIRA_BASE_URL}/rest/api/3/user?accountId=${encodeURIComponent(accountId)}`;
+		const response = await fetch(url, {
+			headers: {
+				Authorization: `Basic ${auth}`,
+				Accept: 'application/json',
+			},
+		});
+
+		if (response.status === 404) {
+			return { data: null, error: 'Dev not found' };
+		}
+
+		if (!response.ok) {
+			const body = await response.text();
+			return {
+				data: null,
+				error: `Jira API error ${response.status}: ${body}`,
+			};
+		}
+
+		const json = (await response.json()) as {
+			accountId: string;
+			displayName: string;
+			emailAddress?: string;
+			active?: boolean;
+			avatarUrls?: Record<string, string>;
+		};
+
+		return {
+			data: {
+				accountId: json.accountId,
+				displayName: json.displayName,
+				emailAddress: json.emailAddress,
+				active: json.active,
+				avatarUrl: json.avatarUrls?.['48x48'],
+			},
+			error: null,
+		};
+	} catch (error) {
+		console.error('Error fetching Jira dev:', error);
+		return { data: null, error };
+	}
+}
+
+export async function list_jira_devs(): Promise<{
+	data: JiraDev[] | null;
+	error: unknown;
+}> {
+	try {
+		const url = `${JIRA_BASE_URL}/rest/api/3/user/assignable/search?project=${encodeURIComponent(JIRA_PROJECT_KEY)}&maxResults=200`;
+		const response = await fetch(url, {
+			headers: {
+				Authorization: `Basic ${auth}`,
+				Accept: 'application/json',
+			},
+		});
+
+		if (!response.ok) {
+			const body = await response.text();
+			return {
+				data: null,
+				error: `Jira API error ${response.status}: ${body}`,
+			};
+		}
+
+		const json = (await response.json()) as Array<{
+			accountId: string;
+			displayName: string;
+			accountType?: string;
+			active?: boolean;
+			avatarUrls?: Record<string, string>;
+		}>;
+
+		const devs = json
+			.filter((u) => u.active !== false && u.accountType === 'atlassian')
+			.map((u) => ({
+				accountId: u.accountId,
+				displayName: u.displayName,
+				avatarUrl: u.avatarUrls?.['48x48'],
+			}));
+
+		return { data: devs, error: null };
+	} catch (error) {
+		console.error('Error listing Jira devs:', error);
 		return { data: null, error };
 	}
 }

@@ -1,12 +1,11 @@
 # node-ai
 
-A REST API that uses AI to classify support tickets, store them in a vector database, and answer questions using RAG (Retrieval-Augmented Generation). Integrates with Jira and Monday.com to automatically create and assign issues.
+A REST API that uses AI to classify support tickets, store them in a vector database, and answer questions using RAG (Retrieval-Augmented Generation). Integrates with Jira to create issues on demand for tickets that need deeper handling.
 
 ## Features
 
 - **Ticket classification** — AI analyzes incoming tickets and assigns category, severity, area, summary, tags, and a detailed analysis
-- **Smart assignment** — automatically assigns tickets to the right person based on area (backend → Tobias, frontend → Gustavo)
-- **Jira + Monday integration** — creates issues/items in both platforms simultaneously
+- **Jira integration** — create a Jira issue for a ticket on demand, assigning a specific dev
 - **Vector storage** — tickets are embedded and stored in Qdrant for semantic search
 - **RAG chat** — answer questions using context retrieved from similar past tickets
 - **Firebase auth** — ticket creation requires a valid Firebase ID token
@@ -28,7 +27,8 @@ A REST API that uses AI to classify support tickets, store them in a vector data
 | Method | Path | Description |
 |--------|------|-------------|
 | `GET` | `/tickets` | List all tickets |
-| `POST` | `/tickets` | Classify a ticket, save and create Jira/Monday issues |
+| `POST` | `/ticket` | Classify a ticket and save it (no Jira) |
+| `POST` | `/ticket/:id/jira/:devId` | Create a Jira issue for an existing ticket, assigning the given dev |
 | `POST` | `/tickets/search` | Search similar tickets by semantic similarity |
 | `GET` | `/chats` | List all conversations |
 | `POST` | `/chat` | Send a message and get an AI response grounded in past tickets |
@@ -49,35 +49,27 @@ Content-Type: `multipart/form-data`
 | `description` | no | Issue description (max 2000 chars) |
 | `file` | no | Image or file (JPG, PNG, WEBP, PDF, TXT — max 10 MB) |
 
+Response `201` — the saved ticket.
+
+### POST `/ticket/:id/jira/:devId`
+
+Creates a Jira issue for an existing ticket, assigning the given dev (Jira accountId).
+
+Requires `Authorization: Bearer <firebase_token>` header.
+
 Response `201`:
 ```json
 {
-  "ticket": {
-    "id": "...",
-    "title": "Login error",
-    "system": "App v3 (Android)",
-    "studentEmail": "student@example.com",
-    "category": "auth",
-    "severity": "high",
-    "area": "backend",
-    "status": "open",
-    "createdBy": "<firebase_uid>",
-    "summary": "...",
-    "analysis": "...",
-    "tags": ["login", "auth"],
-    "created_at": "..."
-  },
+  "ticket": { "id": "...", "jira_key": "PROJ-42", "responsible_dev": "<accountId>" },
   "jira": {
     "id": "...",
     "key": "PROJ-42",
     "url": "https://yourorg.atlassian.net/browse/PROJ-42"
-  },
-  "monday": {
-    "id": "...",
-    "url": "https://yourorg.monday.com/boards/..."
   }
 }
 ```
+
+Errors: `404` (ticket not found), `409` (ticket already has a Jira issue).
 
 ### POST `/tickets/search`
 
@@ -119,14 +111,6 @@ JIRA_BASE_URL=https://yourorg.atlassian.net
 JIRA_EMAIL=you@example.com
 JIRA_API_TOKEN=your_jira_api_token
 JIRA_PROJECT_KEY=PROJ
-JIRA_ASSIGNEE_BACKEND=<jira_account_id_backend>
-JIRA_ASSIGNEE_FRONTEND=<jira_account_id_frontend>
-
-# Monday
-MONDAY_API_TOKEN=your_monday_api_token
-MONDAY_BOARD_ID=your_board_id
-MONDAY_ASSIGNEE_BACKEND=<monday_user_id_backend>
-MONDAY_ASSIGNEE_FRONTEND=<monday_user_id_frontend>
 
 # Firebase
 FIREBASE_PROJECT_ID=your_firebase_project_id

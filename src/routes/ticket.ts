@@ -1,11 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { ticket_controller } from '@/controllers/ticket.js';
-import {
-	jira_issue_schema,
-	monday_item_schema,
-	ticket_schema,
-} from '@/types/ticket.js';
+import { jira_issue_schema, ticket_schema } from '@/types/ticket.js';
 
 export const ticket_route = async (app: FastifyInstance) => {
 	app.get(
@@ -68,18 +64,13 @@ export const ticket_route = async (app: FastifyInstance) => {
 			schema: {
 				consumes: ['multipart/form-data'],
 				response: {
-					201: z.object({
-						ticket: ticket_schema,
-						jira: jira_issue_schema.nullable(),
-						monday: monday_item_schema.nullable(),
-					}),
+					201: ticket_schema,
 					400: z.object({ error: z.string() }),
 					429: z.object({ error: z.string() }),
 					500: z.object({ error: z.unknown() }),
 				},
 				tags: ['Tickets'],
-				summary:
-					'Classify a ticket, save to vector DB and create Jira/Monday issues',
+				summary: 'Classify a ticket and save to MongoDB + vector DB',
 				description: [
 					'**Required fields:**',
 					'- `title` — ticket title (max 100 chars)',
@@ -91,7 +82,6 @@ export const ticket_route = async (app: FastifyInstance) => {
 					'- `version` — app/system version (max 20 chars)',
 					'- `description` — issue description (max 2000 chars)',
 					'- `file` — image or file (JPG, PNG, WEBP, PDF, TXT — max 10 MB)',
-					'- `responsible_dev` — the developer responsible for the ticket',
 				].join('\n'),
 			},
 		},
@@ -99,36 +89,29 @@ export const ticket_route = async (app: FastifyInstance) => {
 	);
 
 	app.post(
-		'/ticket/jira',
+		'/ticket/:id/jira/:devId',
 		{
 			schema: {
-				consumes: ['multipart/form-data'],
+				params: z.object({
+					id: z.string().uuid(),
+					devId: z.string().min(1),
+				}),
 				response: {
 					201: z.object({
 						ticket: ticket_schema,
-						jira: jira_issue_schema.nullable(),
+						jira: jira_issue_schema,
 					}),
-					400: z.object({ error: z.string() }),
-					429: z.object({ error: z.string() }),
-					500: z.object({ error: z.unknown() }),
+					401: z.object({ error: z.string() }),
+					404: z.object({ error: z.string() }),
+					409: z.object({ error: z.string() }),
+					500: z.object({ error: z.string() }),
 				},
 				tags: ['Tickets'],
-				summary: 'Classify a ticket and save ONLY to Jira (no Monday)',
-				description: [
-					'**Required fields:**',
-					'- `title` — ticket title (max 100 chars)',
-					'- `system` — system name',
-					'- `studentId` — student Firebase ID',
-					'',
-					'**Optional fields:**',
-					'- `deviceModel` — device model (max 60 chars)',
-					'- `version` — app/system version (max 20 chars)',
-					'- `description` — issue description (max 2000 chars)',
-					'- `file` — image or file (JPG, PNG, WEBP, PDF, TXT — max 10 MB)',
-				].join('\n'),
+				summary:
+					'Create a Jira issue for an existing ticket, assigning the given dev',
 			},
 		},
-		ticket_controller.classify_jira_only,
+		ticket_controller.create_jira,
 	);
 
 	app.post(

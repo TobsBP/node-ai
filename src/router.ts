@@ -1,6 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import { analytics_route } from './routes/analytics.js';
 import { chat_route } from './routes/chat.js';
+import { jira_route } from './routes/jira.js';
 import { notification_route } from './routes/notification.js';
 import { ticket_route } from './routes/ticket.js';
 import { webhook_route } from './routes/webhook.js';
@@ -11,4 +12,5 @@ export const routes = async (app: FastifyInstance) => {
 	app.register(analytics_route);
 	app.register(webhook_route);
 	app.register(notification_route);
+	app.register(jira_route);
 };

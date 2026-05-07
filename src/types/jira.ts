@@ -1,3 +1,9 @@
+export type JiraDev = {
+	accountId: string;
+	displayName: string;
+	avatarUrl?: string;
+};
+
 export type JiraCreatedIssue = {
 	id: string;
 	key: string;

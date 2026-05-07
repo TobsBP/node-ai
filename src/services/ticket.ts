@@ -1,12 +1,10 @@
 import { randomUUID } from 'node:crypto';
 import { create_jira_issue, type JiraCreatedIssue } from '@/lib/jira.js';
 import { generate_embedding, send_message } from '@/lib/model.js';
-import { create_monday_item, type MondayCreatedItem } from '@/lib/monday.js';
 import { tickets_collection } from '@/lib/mongo.js';
 import { ensure_collection, qdrant, TICKETS_COLLECTION } from '@/lib/qdrant.js';
 import type { Ticket } from '@/types/ticket.js';
 import { CLASSIFY_PROMPT } from '@/utils/consts/classify_prompt.js';
-import { AREA_TO_ASSIGNEE } from '@/utils/consts/jira.js';
 import { notification_service } from '@/services/notification.js';
 
 type TicketInput = Pick<
@@ -139,9 +137,6 @@ export const ticket_service = {
 				],
 				created_at: new Date().toISOString(),
 				...classification,
-				responsible_dev: classification.area
-					? AREA_TO_ASSIGNEE[classification.area]
-					: undefined,
 			};
 
 			await qdrant.upsert(TICKETS_COLLECTION, {
@@ -170,65 +165,59 @@ export const ticket_service = {
 		return { data: ticket, error: null };
 	},
 
-	async classify_save_and_create_jira(input: TicketInput): Promise<{
-		data: {
-			ticket: Ticket;
-			jira: JiraCreatedIssue | null;
-			monday: MondayCreatedItem | null;
-		} | null;
+	async create_jira_for_ticket(
+		ticketId: string,
+		devId: string,
+	): Promise<{
+		data: { ticket: Ticket; jira: JiraCreatedIssue } | null;
 		error: unknown;
 	}> {
-		const { data: ticket, error } = await this.classify_and_save(input);
-		if (error || !ticket)
-			return { data: null, error: error ?? 'Classification failed' };
+		try {
+			const ticket = (await tickets_collection.findOne(
+				{ id: ticketId },
+				{ projection: { _id: 0 } },
+			)) as Ticket | null;
 
-		const [
-			{ data: jira, error: jira_error },
-			{ data: monday, error: monday_error },
-		] = await Promise.all([
-			create_jira_issue(ticket),
-			create_monday_item(ticket),
-		]);
+			if (!ticket) return { data: null, error: 'Ticket not found' };
+			if (ticket.jira_key)
+				return { data: null, error: 'Ticket already has a Jira issue' };
 
-		if (jira_error) console.error('Jira issue creation failed:', jira_error);
-		if (monday_error)
-			console.error('Monday item creation failed:', monday_error);
-
-		if (jira) {
-			ticket.jira_key = jira.key;
-			await tickets_collection.updateOne(
-				{ id: ticket.id },
-				{ $set: { jira_key: jira.key } },
+			const { data: jira, error: jira_error } = await create_jira_issue(
+				ticket,
+				devId,
 			);
-		}
 
-		return { data: { ticket, jira, monday }, error: null };
-	},
+			if (jira_error || !jira) {
+				console.error('Jira issue creation failed:', jira_error);
+				return { data: null, error: jira_error ?? 'Jira creation failed' };
+			}
 
-	async classify_save_and_create_jira_only(input: TicketInput): Promise<{
-		data: {
-			ticket: Ticket;
-			jira: JiraCreatedIssue | null;
-		} | null;
-		error: unknown;
-	}> {
-		const { data: ticket, error } = await this.classify_and_save(input);
-		if (error || !ticket)
-			return { data: null, error: error ?? 'Classification failed' };
+			const audit_entry = {
+				id: randomUUID(),
+				field: 'jira_key',
+				old_value: null,
+				new_value: jira.key,
+				changedBy: devId,
+				changed_at: new Date().toISOString(),
+			};
 
-		const { data: jira, error: jira_error } = await create_jira_issue(ticket);
-
-		if (jira_error) console.error('Jira issue creation failed:', jira_error);
-
-		if (jira) {
-			ticket.jira_key = jira.key;
-			await tickets_collection.updateOne(
-				{ id: ticket.id },
-				{ $set: { jira_key: jira.key } },
+			const result = await tickets_collection.findOneAndUpdate(
+				{ id: ticketId },
+				{
+					$set: { jira_key: jira.key, responsible_dev: devId },
+					$push: { audit: audit_entry },
+				},
+				{ returnDocument: 'after', projection: { _id: 0 } },
 			);
-		}
 
-		return { data: { ticket, jira }, error: null };
+			return {
+				data: { ticket: (result as unknown as Ticket) ?? ticket, jira },
+				error: null,
+			};
+		} catch (error) {
+			console.error('Error creating Jira for ticket:', error);
+			return { data: null, error };
+		}
 	},
 
 	async search_similar(

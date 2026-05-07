@@ -79,23 +79,20 @@ export const ticket_controller = {
 		}
 
 		const fields: Record<string, string> = {};
+		const files: string[] = [];
 
 		for await (const part of request.parts()) {
 			if (part.type === 'field') {
-				fields[part.fieldname] = part.value as string;
+				if (part.fieldname === 'file') {
+					files.push(part.value as string);
+				} else {
+					fields[part.fieldname] = part.value as string;
+				}
 			}
 		}
 
-		const {
-			title,
-			system,
-			studentId,
-			deviceModel,
-			version,
-			description,
-			file,
-			_responsible_dev,
-		} = fields;
+		const { title, system, studentId, deviceModel, version, description } =
+			fields;
 
 		if (!title || !system || !studentId) {
 			return reply
@@ -103,14 +100,14 @@ export const ticket_controller = {
 				.send({ error: 'title, system and studentId are required' });
 		}
 
-		const { data, error } = await ticket_service.classify_save_and_create_jira({
+		const { data, error } = await ticket_service.classify_and_save({
 			title,
 			system,
 			studentId,
 			deviceModel,
 			version,
 			description,
-			file,
+			file: files.length > 0 ? files : undefined,
 			createdBy,
 		});
 
@@ -125,7 +122,10 @@ export const ticket_controller = {
 		return reply.status(201).send(data);
 	},
 
-	async classify_jira_only(request: FastifyRequest, reply: FastifyReply) {
+	async create_jira(
+		request: FastifyRequest<{ Params: { id: string; devId: string } }>,
+		reply: FastifyReply,
+	) {
 		const authHeader = request.headers.authorization;
 		if (!authHeader?.startsWith('Bearer ')) {
 			return reply
@@ -133,57 +133,28 @@ export const ticket_controller = {
 				.send({ error: 'Missing or invalid authorization header' });
 		}
 
-		let createdBy: string;
 		try {
-			createdBy = await verify_firebase_token(authHeader.slice(7));
+			await verify_firebase_token(authHeader.slice(7));
 		} catch {
 			return reply.status(401).send({ error: 'Invalid or expired token' });
 		}
 
-		const fields: Record<string, string> = {};
-
-		for await (const part of request.parts()) {
-			if (part.type === 'field') {
-				fields[part.fieldname] = part.value as string;
-			}
-		}
-
-		const {
-			title,
-			system,
-			studentId,
-			deviceModel,
-			version,
-			description,
-			file,
-		} = fields;
-
-		if (!title || !system || !studentId) {
-			return reply
-				.status(400)
-				.send({ error: 'title, system and studentId are required' });
-		}
-
-		const { data, error } =
-			await ticket_service.classify_save_and_create_jira_only({
-				title,
-				system,
-				studentId,
-				deviceModel,
-				version,
-				description,
-				file,
-				createdBy,
-			});
+		const { id, devId } = request.params;
+		const { data, error } = await ticket_service.create_jira_for_ticket(
+			id,
+			devId,
+		);
 
 		if (error) {
-			const e = error as Record<string, unknown>;
-			if (e?.status === 429)
-				return reply.status(429).send({ error: 'Limite de uso atingido' });
-			return reply.status(500).send({ error });
+			if (error === 'Ticket not found')
+				return reply.status(404).send({ error });
+			if (error === 'Ticket already has a Jira issue')
+				return reply.status(409).send({ error });
+			return reply.status(500).send({
+				error: error instanceof Error ? error.message : String(error),
+			});
 		}
-		if (!data)
-			return reply.status(400).send({ error: 'Classification failed' });
+
 		return reply.status(201).send(data);
 	},
 
