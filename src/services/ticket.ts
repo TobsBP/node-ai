@@ -1,5 +1,9 @@
 import { randomUUID } from 'node:crypto';
-import { create_jira_issue, type JiraCreatedIssue } from '@/lib/jira.js';
+import {
+	create_jira_issue,
+	type JiraCreatedIssue,
+	transition_jira_issue,
+} from '@/lib/jira.js';
 import { generate_embedding, send_message } from '@/lib/model.js';
 import { tickets_collection } from '@/lib/mongo.js';
 import { ensure_collection, qdrant, TICKETS_COLLECTION } from '@/lib/qdrant.js';
@@ -296,7 +300,13 @@ export const ticket_service = {
 
 	async update_status_by_jira_key(
 		jira_key: string,
-		status: 'open' | 'in_progress' | 'closed' | 'frozen' | 'review',
+		status:
+			| 'open'
+			| 'in_progress'
+			| 'closed'
+			| 'frozen'
+			| 'testing_validation'
+			| 'rejected',
 	): Promise<{ data: Ticket | null; error: unknown }> {
 		try {
 			const ticket = await tickets_collection.findOne({ jira_key });
@@ -380,12 +390,26 @@ export const ticket_service = {
 
 	async update_status(
 		ticketId: string,
-		status: 'open' | 'in_progress' | 'closed' | 'frozen' | 'review',
+		status:
+			| 'open'
+			| 'in_progress'
+			| 'closed'
+			| 'frozen'
+			| 'testing_validation'
+			| 'rejected',
 		changedBy: string,
 	): Promise<{ data: Ticket | null; error: unknown }> {
 		try {
 			const ticket = await tickets_collection.findOne({ id: ticketId });
 			if (!ticket) return { data: null, error: 'Ticket not found' };
+
+			if (ticket.status === 'rejected' && status !== 'in_progress') {
+				return {
+					data: null,
+					error:
+						'Rejected tickets can only transition to in_progress',
+				};
+			}
 
 			const audit_entry = {
 				id: randomUUID(),
@@ -404,6 +428,15 @@ export const ticket_service = {
 				},
 				{ returnDocument: 'after', projection: { _id: 0 } },
 			);
+
+			if (status === 'rejected' && ticket.jira_key) {
+				const { error: jira_error } = await transition_jira_issue(
+					ticket.jira_key,
+					['Rejected', 'Rejeitado'],
+				);
+				if (jira_error)
+					console.error('Failed to transition Jira issue:', jira_error);
+			}
 
 			if (ticket.createdBy && ticket.createdBy !== changedBy) {
 				await notification_service.create({

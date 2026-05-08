@@ -139,12 +139,20 @@ export const ticket_route = async (app: FastifyInstance) => {
 			schema: {
 				params: z.object({ id: z.uuid() }),
 				body: z.object({
-					status: z.enum(['open', 'in_progress', 'closed', 'review', 'frozen']),
+					status: z.enum([
+						'open',
+						'in_progress',
+						'closed',
+						'testing_validation',
+						'frozen',
+						'rejected',
+					]),
 				}),
 				response: {
 					200: ticket_schema,
 					400: z.object({ error: z.string() }),
 					404: z.object({ error: z.string() }),
+					409: z.object({ error: z.string() }),
 					500: z.object({ error: z.string() }),
 				},
 				tags: ['Tickets'],

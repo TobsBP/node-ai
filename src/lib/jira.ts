@@ -152,6 +152,70 @@ export async function create_jira_issue(
 	}
 }
 
+export async function transition_jira_issue(
+	jira_key: string,
+	target_status_names: string[],
+): Promise<{ data: { transition_id: string; to: string } | null; error: unknown }> {
+	try {
+		const list_url = `${JIRA_BASE_URL}/rest/api/3/issue/${encodeURIComponent(jira_key)}/transitions`;
+		const list_res = await fetch(list_url, {
+			headers: {
+				Authorization: `Basic ${auth}`,
+				Accept: 'application/json',
+			},
+		});
+
+		if (!list_res.ok) {
+			const body = await list_res.text();
+			return {
+				data: null,
+				error: `Jira API error ${list_res.status}: ${body}`,
+			};
+		}
+
+		const json = (await list_res.json()) as {
+			transitions: Array<{ id: string; name: string; to: { name: string } }>;
+		};
+
+		const wanted = target_status_names.map((s) => s.toLowerCase());
+		const match = json.transitions.find(
+			(t) =>
+				wanted.includes(t.to.name.toLowerCase()) ||
+				wanted.includes(t.name.toLowerCase()),
+		);
+
+		if (!match) {
+			return {
+				data: null,
+				error: `No Jira transition matching ${target_status_names.join(', ')} (available: ${json.transitions.map((t) => t.to.name).join(', ')})`,
+			};
+		}
+
+		const apply_res = await fetch(list_url, {
+			method: 'POST',
+			headers: {
+				Authorization: `Basic ${auth}`,
+				'Content-Type': 'application/json',
+				Accept: 'application/json',
+			},
+			body: JSON.stringify({ transition: { id: match.id } }),
+		});
+
+		if (!apply_res.ok) {
+			const body = await apply_res.text();
+			return {
+				data: null,
+				error: `Jira API error ${apply_res.status}: ${body}`,
+			};
+		}
+
+		return { data: { transition_id: match.id, to: match.to.name }, error: null };
+	} catch (error) {
+		console.error('Error transitioning Jira issue:', error);
+		return { data: null, error };
+	}
+}
+
 export async function get_jira_dev(accountId: string): Promise<{
 	data: (JiraDev & { emailAddress?: string; active?: boolean }) | null;
 	error: unknown;

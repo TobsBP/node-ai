@@ -212,7 +212,15 @@ export const ticket_controller = {
 	async update_status(
 		request: FastifyRequest<{
 			Params: { id: string };
-			Body: { status: 'open' | 'in_progress' | 'closed' | 'review' | 'frozen' };
+			Body: {
+				status:
+					| 'open'
+					| 'in_progress'
+					| 'closed'
+					| 'testing_validation'
+					| 'frozen'
+					| 'rejected';
+			};
 		}>,
 		reply: FastifyReply,
 	) {
@@ -240,7 +248,11 @@ export const ticket_controller = {
 		);
 
 		if (error) {
-			return reply.status(error === 'Ticket not found' ? 404 : 500).send({
+			if (error === 'Ticket not found')
+				return reply.status(404).send({ error });
+			if (error === 'Rejected tickets can only transition to in_progress')
+				return reply.status(409).send({ error });
+			return reply.status(500).send({
 				error: error instanceof Error ? error.message : String(error),
 			});
 		}

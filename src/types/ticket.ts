@@ -29,7 +29,14 @@ export const ticket_schema = z.object({
 		.union([z.array(z.string()), z.string().transform((s) => [s])])
 		.nullish(),
 	status: z
-		.enum(['open', 'in_progress', 'closed', 'review', 'frozen'])
+		.enum([
+			'open',
+			'in_progress',
+			'closed',
+			'testing_validation',
+			'frozen',
+			'rejected',
+		])
 		.nullish(),
 	createdBy: z.string().nullish(),
 	category: z.enum(['bug', 'infra', 'auth', 'feature', 'other']),
