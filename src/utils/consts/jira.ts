@@ -8,11 +8,11 @@ export const SEVERITY_TO_PRIORITY: Record<Ticket['severity'], string> = {
 };
 
 export const CATEGORY_TO_ISSUE_TYPE: Record<Ticket['category'], string> = {
-	bug: 'Bug',
-	infra: 'Bug',
-	auth: 'Bug',
-	feature: 'Story',
-	other: 'Task',
+	bug: 'Tarefa',
+	infra: 'Tarefa',
+	auth: 'Tarefa',
+	feature: 'Tarefa',
+	other: 'Tarefa',
 };
 
 export const JIRA_STATUS_MAP: Record<string, Ticket['status']> = {
