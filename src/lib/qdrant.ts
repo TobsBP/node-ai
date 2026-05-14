@@ -10,12 +10,22 @@ if (!url_qdrant || !key_qdrant) {
 export const qdrant = new QdrantClient({ url: url_qdrant, apiKey: key_qdrant });
 
 export const TICKETS_COLLECTION = 'tickets';
+export const RESOLUTIONS_COLLECTION = 'resolutions';
 export const VECTOR_SIZE = 768;
 
 export async function ensure_collection() {
 	const { exists } = await qdrant.collectionExists(TICKETS_COLLECTION);
 	if (!exists) {
 		await qdrant.createCollection(TICKETS_COLLECTION, {
+			vectors: { size: VECTOR_SIZE, distance: 'Cosine' },
+		});
+	}
+}
+
+export async function ensure_resolutions_collection() {
+	const { exists } = await qdrant.collectionExists(RESOLUTIONS_COLLECTION);
+	if (!exists) {
+		await qdrant.createCollection(RESOLUTIONS_COLLECTION, {
 			vectors: { size: VECTOR_SIZE, distance: 'Cosine' },
 		});
 	}

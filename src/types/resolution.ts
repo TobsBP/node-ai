@@ -12,6 +12,7 @@ export const resolution_schema = z.object({
 	approved_for_training: z.boolean().nullable(),
 	reviewed_by: z.string().nullable(),
 	reviewed_at: z.string().nullable(),
+	indexed_at: z.string().nullable().optional(),
 });
 
 export type Resolution = z.infer<typeof resolution_schema>;

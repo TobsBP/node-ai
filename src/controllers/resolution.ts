@@ -42,6 +42,41 @@ export const resolution_controller = {
 		return reply.status(200).send(data);
 	},
 
+	async suggest(
+		request: FastifyRequest<{
+			Body: { problem: string };
+			Querystring: { limit?: number };
+		}>,
+		reply: FastifyReply,
+	) {
+		const { problem } = request.body;
+		const limit = request.query.limit ?? 5;
+
+		const { data, error } = await resolution_service.suggest(problem, limit);
+
+		if (error)
+			return reply.status(500).send({
+				error: error instanceof Error ? error.message : String(error),
+			});
+
+		return reply.status(200).send(data);
+	},
+
+	async trigger_training(
+		request: FastifyRequest<{ Body?: { force?: boolean } }>,
+		reply: FastifyReply,
+	) {
+		const force = request.body?.force ?? false;
+		const { data, error } = await resolution_service.trigger_training(force);
+
+		if (error)
+			return reply.status(500).send({
+				error: error instanceof Error ? error.message : String(error),
+			});
+
+		return reply.status(200).send(data);
+	},
+
 	async set_approval(
 		request: FastifyRequest<{
 			Params: { id: string };

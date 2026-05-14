@@ -1,7 +1,24 @@
 import { randomUUID } from 'node:crypto';
+import { generate_embedding } from '@/lib/model.js';
 import { resolutions_collection } from '@/lib/mongo.js';
+import {
+	ensure_resolutions_collection,
+	qdrant,
+	RESOLUTIONS_COLLECTION,
+} from '@/lib/qdrant.js';
 import type { Resolution } from '@/types/resolution.js';
 import type { Ticket } from '@/types/ticket.js';
+
+function build_problem_text(ticket: Ticket): string {
+	const parts = [
+		`Title: ${ticket.title ?? ''}`,
+		`System: ${ticket.system ?? ''}`,
+		ticket.description ? `Description: ${ticket.description}` : null,
+		ticket.deviceModel ? `Device: ${ticket.deviceModel}` : null,
+		ticket.version ? `Version: ${ticket.version}` : null,
+	];
+	return parts.filter(Boolean).join('\n');
+}
 
 type ApprovalFilter = 'pending' | 'approved' | 'rejected';
 
@@ -69,6 +86,124 @@ export const resolution_service = {
 			return { data: resolution as unknown as Resolution, error: null };
 		} catch (error) {
 			console.error('Error fetching resolution by id:', error);
+			return { data: null, error };
+		}
+	},
+
+	async suggest(
+		problem: string,
+		limit = 5,
+	): Promise<{
+		data: Array<{
+			resolution_id: string;
+			ticket_id: string;
+			problem: string;
+			resolution_text: string;
+			category?: string;
+			severity?: string;
+			area?: string;
+			tags?: string[];
+			score: number;
+		}> | null;
+		error: unknown;
+	}> {
+		try {
+			await ensure_resolutions_collection();
+
+			const embedding = await generate_embedding(problem, 'RETRIEVAL_QUERY');
+
+			const results = await qdrant.query(RESOLUTIONS_COLLECTION, {
+				query: embedding,
+				limit,
+				with_payload: true,
+			});
+
+			const suggestions = results.points.map((p) => ({
+				...(p.payload as {
+					resolution_id: string;
+					ticket_id: string;
+					problem: string;
+					resolution_text: string;
+					category?: string;
+					severity?: string;
+					area?: string;
+					tags?: string[];
+				}),
+				score: p.score ?? 0,
+			}));
+
+			return { data: suggestions, error: null };
+		} catch (error) {
+			console.error('Error suggesting resolutions:', error);
+			return { data: null, error };
+		}
+	},
+
+	async trigger_training(force = false): Promise<{
+		data: { indexed: number; skipped: number; failed: number } | null;
+		error: unknown;
+	}> {
+		try {
+			await ensure_resolutions_collection();
+
+			const filter: Record<string, unknown> = { approved_for_training: true };
+			if (!force) filter.indexed_at = null;
+
+			const resolutions = (await resolutions_collection
+				.find(filter, { projection: { _id: 0 } })
+				.toArray()) as unknown as Resolution[];
+
+			let indexed = 0;
+			let failed = 0;
+
+			for (const res of resolutions) {
+				try {
+					const problem = build_problem_text(res.ticket_snapshot);
+					const embedding = await generate_embedding(
+						problem,
+						'RETRIEVAL_DOCUMENT',
+					);
+
+					await qdrant.upsert(RESOLUTIONS_COLLECTION, {
+						points: [
+							{
+								id: res.id,
+								vector: embedding,
+								payload: {
+									resolution_id: res.id,
+									ticket_id: res.ticket_id,
+									problem,
+									resolution_text: res.resolution_text,
+									category: res.ticket_snapshot.category,
+									severity: res.ticket_snapshot.severity,
+									area: res.ticket_snapshot.area,
+									tags: res.ticket_snapshot.tags,
+								},
+							},
+						],
+					});
+
+					await resolutions_collection.updateOne(
+						{ id: res.id },
+						{ $set: { indexed_at: new Date().toISOString() } },
+					);
+					indexed++;
+				} catch (err) {
+					console.error(`Failed to index resolution ${res.id}:`, err);
+					failed++;
+				}
+			}
+
+			return {
+				data: {
+					indexed,
+					skipped: resolutions.length - indexed - failed,
+					failed,
+				},
+				error: null,
+			};
+		} catch (error) {
+			console.error('Error triggering training:', error);
 			return { data: null, error };
 		}
 	},
