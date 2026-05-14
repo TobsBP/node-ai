@@ -531,19 +531,22 @@ export const ticket_service = {
 
 			if (ticket.jira_key) {
 				const transition_map: Record<typeof status, string[]> = {
-					open: ['To Do', 'A fazer', 'Aberto', 'Backlog'],
-					in_progress: ['In Progress', 'Em andamento', 'Em progresso'],
+					open: ['aguardando atendimento', 'To Do', 'Aberto', 'Backlog'],
+					in_progress: [
+						'Em atendimento',
+						'iniciar atendimento',
+						'In Progress',
+						'Em andamento',
+					],
 					testing_validation: [
+						'teste e validação',
 						'In Review',
 						'Testing',
 						'QA',
-						'Em validação',
-						'Validação',
-						'Em revisão',
 					],
 					frozen: ['Blocked', 'On Hold', 'Congelado', 'Bloqueado'],
-					closed: ['Done', 'Closed', 'Concluído', 'Resolved', 'Resolvido'],
-					rejected: ['Rejected', 'Rejeitado'],
+					closed: ['Concluído', 'Done', 'Closed', 'Resolvido'],
+					rejected: ['rejeitado', 'Rejected'],
 				};
 				const { error: jira_error } = await transition_jira_issue(
 					ticket.jira_key,
