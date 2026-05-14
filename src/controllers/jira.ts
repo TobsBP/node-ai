@@ -18,8 +18,7 @@ export const jira_controller = {
 		const { accountId } = request.params;
 		const { data, error } = await get_jira_dev(accountId);
 		if (error) {
-			if (error === 'Dev not found')
-				return reply.status(404).send({ error });
+			if (error === 'Dev not found') return reply.status(404).send({ error });
 			return reply.status(500).send({
 				error: error instanceof Error ? error.message : String(error),
 			});

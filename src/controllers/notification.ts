@@ -29,7 +29,8 @@ export const notification_controller = {
 			return reply.status(500).send({
 				error: error instanceof Error ? error.message : String(error),
 			});
-		if (!success) return reply.status(404).send({ error: 'Notification not found' });
+		if (!success)
+			return reply.status(404).send({ error: 'Notification not found' });
 
 		return reply.status(200).send({ success: true });
 	},

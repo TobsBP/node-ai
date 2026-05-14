@@ -25,6 +25,27 @@ export const ticket_route = async (app: FastifyInstance) => {
 	);
 
 	app.get(
+		'/tickets/lite',
+		{
+			schema: {
+				querystring: z.object({
+					limit: z.coerce.number().int().min(1).max(100).optional(),
+					offset: z.coerce.number().int().min(0).optional(),
+					createdBy: z.string().optional(),
+				}),
+				response: {
+					200: z.array(ticket_schema),
+					500: z.object({ error: z.string() }),
+				},
+				tags: ['Tickets'],
+				summary:
+					'List tickets created via the lite route (no summary/analysis)',
+			},
+		},
+		ticket_controller.list_lite,
+	);
+
+	app.get(
 		'/ticket/:id',
 		{
 			schema: {
@@ -89,6 +110,40 @@ export const ticket_route = async (app: FastifyInstance) => {
 	);
 
 	app.post(
+		'/ticket/lite',
+		{
+			schema: {
+				consumes: ['multipart/form-data'],
+				response: {
+					201: ticket_schema,
+					400: z.object({ error: z.string() }),
+					429: z.object({ error: z.string() }),
+					500: z.object({ error: z.unknown() }),
+				},
+				tags: ['Tickets'],
+				summary:
+					'Create a ticket with lightweight AI classification (no summary/analysis)',
+				description: [
+					'Creates a ticket and runs AI only to fill category, severity, area and tags.',
+					'Summary and technical analysis fields are left empty.',
+					'',
+					'**Required fields:**',
+					'- `title` — ticket title (max 100 chars)',
+					'- `system` — system name',
+					'- `studentId` — student Firebase ID',
+					'',
+					'**Optional fields:**',
+					'- `deviceModel` — device model (max 60 chars)',
+					'- `version` — app/system version (max 20 chars)',
+					'- `description` — issue description (max 2000 chars)',
+					'- `file` — image or file (JPG, PNG, WEBP, PDF, TXT — max 10 MB)',
+				].join('\n'),
+			},
+		},
+		ticket_controller.create_lite,
+	);
+
+	app.post(
 		'/ticket/:id/jira/:devId',
 		{
 			schema: {
@@ -138,16 +193,22 @@ export const ticket_route = async (app: FastifyInstance) => {
 		{
 			schema: {
 				params: z.object({ id: z.uuid() }),
-				body: z.object({
-					status: z.enum([
-						'open',
-						'in_progress',
-						'closed',
-						'testing_validation',
-						'frozen',
-						'rejected',
-					]),
-				}),
+				body: z
+					.object({
+						status: z.enum([
+							'open',
+							'in_progress',
+							'closed',
+							'testing_validation',
+							'frozen',
+							'rejected',
+						]),
+						resolution: z.string().min(1).optional(),
+					})
+					.refine((b) => b.status !== 'closed' || !!b.resolution, {
+						message: 'resolution is required when closing a ticket',
+						path: ['resolution'],
+					}),
 				response: {
 					200: ticket_schema,
 					400: z.object({ error: z.string() }),

@@ -43,17 +43,126 @@ export async function create_jira_issue(
 						version: 1,
 						content: [
 							{
-								type: 'paragraph',
-								content: [{ type: 'text', text: ticket.analysis }],
+								type: 'heading',
+								attrs: { level: 2 },
+								content: [{ type: 'text', text: 'Descrição do problema' }],
 							},
 							{
-								type: 'paragraph',
+								type: 'panel',
+								attrs: { panelType: 'info' },
 								content: [
 									{
-										type: 'text',
-										text: `Student ID: ${ticket.studentId} | System: ${ticket.system}${ticket.description ? ` | Description: ${ticket.description}` : ''}`,
-										marks: [{ type: 'em' }],
+										type: 'paragraph',
+										content: [
+											{
+												type: 'text',
+												text:
+													ticket.description?.trim() ||
+													'Sem descrição informada.',
+												marks: ticket.description?.trim()
+													? [{ type: 'strong' }]
+													: [{ type: 'em' }],
+											},
+										],
 									},
+								],
+							},
+							...(ticket.analysis?.trim()
+								? [
+										{
+											type: 'heading',
+											attrs: { level: 3 },
+											content: [{ type: 'text', text: 'Análise técnica' }],
+										},
+										{
+											type: 'paragraph',
+											content: [{ type: 'text', text: ticket.analysis }],
+										},
+									]
+								: []),
+							{
+								type: 'heading',
+								attrs: { level: 3 },
+								content: [{ type: 'text', text: 'Metadados' }],
+							},
+							{
+								type: 'bulletList',
+								content: [
+									{
+										type: 'listItem',
+										content: [
+											{
+												type: 'paragraph',
+												content: [
+													{
+														type: 'text',
+														text: 'Student ID: ',
+														marks: [{ type: 'strong' }],
+													},
+													{
+														type: 'text',
+														text: String(ticket.studentId ?? '-'),
+													},
+												],
+											},
+										],
+									},
+									{
+										type: 'listItem',
+										content: [
+											{
+												type: 'paragraph',
+												content: [
+													{
+														type: 'text',
+														text: 'Sistema: ',
+														marks: [{ type: 'strong' }],
+													},
+													{ type: 'text', text: String(ticket.system ?? '-') },
+												],
+											},
+										],
+									},
+									...(ticket.deviceModel
+										? [
+												{
+													type: 'listItem',
+													content: [
+														{
+															type: 'paragraph',
+															content: [
+																{
+																	type: 'text',
+																	text: 'Dispositivo: ',
+																	marks: [{ type: 'strong' }],
+																},
+																{ type: 'text', text: ticket.deviceModel },
+															],
+														},
+													],
+												},
+											]
+										: []),
+									...(ticket.version
+										? [
+												{
+													type: 'listItem',
+													content: [
+														{
+															type: 'paragraph',
+															content: [
+																{
+																	type: 'text',
+																	text: 'Versão: ',
+																	marks: [{ type: 'strong' }],
+																},
+																{ type: 'text', text: ticket.version },
+															],
+														},
+													],
+												},
+											]
+										: []),
 								],
 							},
 							...(ticket.file && ticket.file.length > 0
@@ -155,7 +264,10 @@ export async function create_jira_issue(
 export async function transition_jira_issue(
 	jira_key: string,
 	target_status_names: string[],
-): Promise<{ data: { transition_id: string; to: string } | null; error: unknown }> {
+): Promise<{
+	data: { transition_id: string; to: string } | null;
+	error: unknown;
+}> {
 	try {
 		const list_url = `${JIRA_BASE_URL}/rest/api/3/issue/${encodeURIComponent(jira_key)}/transitions`;
 		const list_res = await fetch(list_url, {
@@ -209,7 +321,10 @@ export async function transition_jira_issue(
 			};
 		}
 
-		return { data: { transition_id: match.id, to: match.to.name }, error: null };
+		return {
+			data: { transition_id: match.id, to: match.to.name },
+			error: null,
+		};
 	} catch (error) {
 		console.error('Error transitioning Jira issue:', error);
 		return { data: null, error };

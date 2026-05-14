@@ -19,6 +19,26 @@ export const ticket_controller = {
 		return reply.status(200).send(data);
 	},
 
+	async list_lite(
+		request: FastifyRequest<{
+			Querystring: { limit?: number; offset?: number; createdBy?: string };
+		}>,
+		reply: FastifyReply,
+	) {
+		const { limit = 20, offset = 0, createdBy } = request.query;
+		const { data, error } = await ticket_service.list_lite(
+			limit,
+			offset,
+			createdBy,
+		);
+
+		if (error)
+			return reply.status(500).send({
+				error: error instanceof Error ? error.message : String(error),
+			});
+		return reply.status(200).send(data);
+	},
+
 	async get_by_id(
 		request: FastifyRequest<{
 			Params: { id: string };
@@ -122,6 +142,65 @@ export const ticket_controller = {
 		return reply.status(201).send(data);
 	},
 
+	async create_lite(request: FastifyRequest, reply: FastifyReply) {
+		const authHeader = request.headers.authorization;
+		if (!authHeader?.startsWith('Bearer ')) {
+			return reply
+				.status(401)
+				.send({ error: 'Missing or invalid authorization header' });
+		}
+
+		let createdBy: string;
+		try {
+			createdBy = await verify_firebase_token(authHeader.slice(7));
+		} catch {
+			return reply.status(401).send({ error: 'Invalid or expired token' });
+		}
+
+		const fields: Record<string, string> = {};
+		const files: string[] = [];
+
+		for await (const part of request.parts()) {
+			if (part.type === 'field') {
+				if (part.fieldname === 'file') {
+					files.push(part.value as string);
+				} else {
+					fields[part.fieldname] = part.value as string;
+				}
+			}
+		}
+
+		const { title, system, studentId, deviceModel, version, description } =
+			fields;
+
+		if (!title || !system || !studentId) {
+			return reply
+				.status(400)
+				.send({ error: 'title, system and studentId are required' });
+		}
+
+		const { data, error } = await ticket_service.create_lite({
+			title,
+			system,
+			studentId,
+			deviceModel,
+			version,
+			description,
+			file: files.length > 0 ? files : undefined,
+			createdBy,
+		});
+
+		if (error) {
+			const e = error as Record<string, unknown>;
+			if (e?.status === 429)
+				return reply.status(429).send({ error: 'Limite de uso atingido' });
+			return reply.status(500).send({ error });
+		}
+		if (!data)
+			return reply.status(400).send({ error: 'Ticket creation failed' });
+		return reply.status(201).send(data);
+	},
+
 	async create_jira(
 		request: FastifyRequest<{ Params: { id: string; devId: string } }>,
 		reply: FastifyReply,
@@ -220,6 +299,7 @@ export const ticket_controller = {
 					| 'testing_validation'
 					| 'frozen'
 					| 'rejected';
+				resolution?: string;
 			};
 		}>,
 		reply: FastifyReply,
@@ -239,12 +319,13 @@ export const ticket_controller = {
 		}
 
 		const { id } = request.params;
-		const { status } = request.body;
+		const { status, resolution } = request.body;
 
 		const { data, error } = await ticket_service.update_status(
 			id,
 			status,
 			changedBy,
+			resolution,
 		);
 
 		if (error) {

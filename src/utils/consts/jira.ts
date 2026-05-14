@@ -45,16 +45,13 @@ const JIRA_CATEGORY_MAP: Record<string, Ticket['status']> = {
 };
 
 function normalize(s: string): string {
-	return s
-		.normalize('NFD')
-		.replace(/[̀-ͯ]/g, '')
-		.trim()
-		.toLowerCase();
+	return s.normalize('NFD').replace(/[̀-ͯ]/g, '').trim().toLowerCase();
 }
 
-const NORMALIZED_STATUS_MAP: Record<string, Ticket['status']> = Object.fromEntries(
-	Object.entries(JIRA_STATUS_MAP).map(([k, v]) => [normalize(k), v]),
-);
+const NORMALIZED_STATUS_MAP: Record<string, Ticket['status']> =
+	Object.fromEntries(
+		Object.entries(JIRA_STATUS_MAP).map(([k, v]) => [normalize(k), v]),
+	);
 
 export function map_jira_status(
 	jira_status: string,

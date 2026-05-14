@@ -7,9 +7,11 @@ import {
 import { generate_embedding, send_message } from '@/lib/model.js';
 import { tickets_collection } from '@/lib/mongo.js';
 import { ensure_collection, qdrant, TICKETS_COLLECTION } from '@/lib/qdrant.js';
+import { notification_service } from '@/services/notification.js';
+import { resolution_service } from '@/services/resolution.js';
 import type { Ticket } from '@/types/ticket.js';
 import { CLASSIFY_PROMPT } from '@/utils/consts/classify_prompt.js';
-import { notification_service } from '@/services/notification.js';
+import { CLASSIFY_PROMPT_LITE } from '@/utils/consts/classify_prompt_lite.js';
 
 type TicketInput = Pick<
 	Ticket,
@@ -51,6 +53,31 @@ export const ticket_service = {
 			return { data, error: null };
 		} catch (error) {
 			console.error('Error listing tickets:', error);
+			return { data: null, error };
+		}
+	},
+
+	async list_lite(
+		limit = 20,
+		offset = 0,
+		createdBy?: string,
+	): Promise<{ data: Ticket[] | null; error: unknown }> {
+		try {
+			const filter: Record<string, unknown> = {
+				summary: '',
+				analysis: '',
+			};
+			if (createdBy) filter.createdBy = createdBy;
+
+			const data = await tickets_collection
+				.find(filter, { projection: { _id: 0 } })
+				.sort({ created_at: -1 })
+				.skip(offset)
+				.limit(limit)
+				.toArray();
+			return { data, error: null };
+		} catch (error) {
+			console.error('Error listing lite tickets:', error);
 			return { data: null, error };
 		}
 	},
@@ -167,6 +194,79 @@ export const ticket_service = {
 		}
 
 		return { data: ticket, error: null };
+	},
+
+	async create_lite(
+		input: TicketInput,
+	): Promise<{ data: Ticket | null; error: unknown }> {
+		try {
+			await ensure_collection();
+
+			const message = build_message(input);
+
+			const [query_embedding, doc_embedding] = await Promise.all([
+				generate_embedding(message, 'RETRIEVAL_QUERY'),
+				generate_embedding(message, 'RETRIEVAL_DOCUMENT'),
+			]);
+
+			const similar = await qdrant.query(TICKETS_COLLECTION, {
+				query: query_embedding,
+				limit: 3,
+				with_payload: true,
+			});
+
+			const context = similar.points.map((p) => p.payload as Ticket);
+
+			const classify_res = await send_message(
+				CLASSIFY_PROMPT_LITE(message, context),
+			);
+
+			if (classify_res.error || !classify_res.data) {
+				return {
+					data: null,
+					error: classify_res.error ?? 'Classification failed',
+				};
+			}
+
+			const raw = classify_res.data.trim().replace(/^```json\n?|```$/g, '');
+			const classification = JSON.parse(raw) as Pick<
+				Ticket,
+				'category' | 'severity' | 'area' | 'tags'
+			>;
+
+			const ticket: Ticket = {
+				id: randomUUID(),
+				...input,
+				status: 'open',
+				source: input.system,
+				replies: [],
+				audit: [
+					{
+						id: randomUUID(),
+						field: 'ticket',
+						old_value: null,
+						new_value: 'created',
+						changedBy: input.createdBy ?? 'unknown',
+						changed_at: new Date().toISOString(),
+					},
+				],
+				created_at: new Date().toISOString(),
+				summary: '',
+				analysis: '',
+				...classification,
+			};
+
+			await qdrant.upsert(TICKETS_COLLECTION, {
+				points: [{ id: ticket.id, vector: doc_embedding, payload: ticket }],
+			});
+
+			await tickets_collection.insertOne(ticket);
+
+			return { data: ticket, error: null };
+		} catch (error) {
+			console.error('Error creating lite ticket:', error);
+			return { data: null, error };
+		}
 	},
 
 	async create_jira_for_ticket(
@@ -398,6 +498,7 @@ export const ticket_service = {
 			| 'testing_validation'
 			| 'rejected',
 		changedBy: string,
+		resolution?: string,
 	): Promise<{ data: Ticket | null; error: unknown }> {
 		try {
 			const ticket = await tickets_collection.findOne({ id: ticketId });
@@ -406,8 +507,7 @@ export const ticket_service = {
 			if (ticket.status === 'rejected' && status !== 'in_progress') {
 				return {
 					data: null,
-					error:
-						'Rejected tickets can only transition to in_progress',
+					error: 'Rejected tickets can only transition to in_progress',
 				};
 			}
 
@@ -429,13 +529,39 @@ export const ticket_service = {
 				{ returnDocument: 'after', projection: { _id: 0 } },
 			);
 
-			if (status === 'rejected' && ticket.jira_key) {
+			if (ticket.jira_key) {
+				const transition_map: Record<typeof status, string[]> = {
+					open: ['To Do', 'A fazer', 'Aberto', 'Backlog'],
+					in_progress: ['In Progress', 'Em andamento', 'Em progresso'],
+					testing_validation: [
+						'In Review',
+						'Testing',
+						'QA',
+						'Em validação',
+						'Validação',
+						'Em revisão',
+					],
+					frozen: ['Blocked', 'On Hold', 'Congelado', 'Bloqueado'],
+					closed: ['Done', 'Closed', 'Concluído', 'Resolved', 'Resolvido'],
+					rejected: ['Rejected', 'Rejeitado'],
+				};
 				const { error: jira_error } = await transition_jira_issue(
 					ticket.jira_key,
-					['Rejected', 'Rejeitado'],
+					transition_map[status],
 				);
 				if (jira_error)
 					console.error('Failed to transition Jira issue:', jira_error);
+			}
+
+			if (status === 'closed' && resolution && result) {
+				const { error: res_error } =
+					await resolution_service.create_from_ticket(
+						result as unknown as Ticket,
+						resolution,
+						changedBy,
+					);
+				if (res_error)
+					console.error('Failed to create resolution entry:', res_error);
 			}
 
 			if (ticket.createdBy && ticket.createdBy !== changedBy) {

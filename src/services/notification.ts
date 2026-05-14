@@ -2,7 +2,10 @@ import { randomUUID } from 'node:crypto';
 import { notifications_collection } from '@/lib/mongo.js';
 import type { Notification } from '@/types/notification.js';
 
-type CreateInput = Pick<Notification, 'userId' | 'ticketId' | 'type' | 'message'>;
+type CreateInput = Pick<
+	Notification,
+	'userId' | 'ticketId' | 'type' | 'message'
+>;
 
 export const notification_service = {
 	async create(input: CreateInput): Promise<void> {
@@ -31,7 +34,10 @@ export const notification_service = {
 
 			const unread_count = notifications.filter((n) => !n.read).length;
 
-			return { data: { unread_count, notifications: notifications as Notification[] }, error: null };
+			return {
+				data: { unread_count, notifications: notifications as Notification[] },
+				error: null,
+			};
 		} catch (error) {
 			console.error('Error listing notifications:', error);
 			return { data: null, error };
@@ -44,7 +50,8 @@ export const notification_service = {
 				{ id },
 				{ $set: { read: true } },
 			);
-			if (result.matchedCount === 0) return { success: false, error: 'Notification not found' };
+			if (result.matchedCount === 0)
+				return { success: false, error: 'Notification not found' };
 			return { success: true, error: null };
 		} catch (error) {
 			console.error('Error marking notification as read:', error);
@@ -52,7 +59,9 @@ export const notification_service = {
 		}
 	},
 
-	async mark_all_read(userId: string): Promise<{ success: boolean; error: unknown }> {
+	async mark_all_read(
+		userId: string,
+	): Promise<{ success: boolean; error: unknown }> {
 		try {
 			await notifications_collection.updateMany(
 				{ userId, read: false },
