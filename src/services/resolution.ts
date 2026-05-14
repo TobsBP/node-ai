@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
-import { generate_embedding } from '@/lib/model.js';
+import { generate_embedding, send_message } from '@/lib/model.js';
+import { SUGGEST_PROMPT } from '@/utils/consts/suggest_prompt.js';
 import { resolutions_collection } from '@/lib/mongo.js';
 import {
 	ensure_resolutions_collection,
@@ -135,6 +136,53 @@ export const resolution_service = {
 			return { data: suggestions, error: null };
 		} catch (error) {
 			console.error('Error suggesting resolutions:', error);
+			return { data: null, error };
+		}
+	},
+
+	async suggest_with_ai(
+		problem: string,
+		limit = 5,
+	): Promise<{
+		data: {
+			answer: string;
+			sources: Array<{
+				resolution_id: string;
+				ticket_id: string;
+				resolution_text: string;
+				score: number;
+			}>;
+		} | null;
+		error: unknown;
+	}> {
+		try {
+			const { data: matches, error: search_error } = await this.suggest(
+				problem,
+				limit,
+			);
+			if (search_error || !matches) {
+				return { data: null, error: search_error ?? 'Search failed' };
+			}
+
+			const ai_res = await send_message(SUGGEST_PROMPT(problem, matches));
+			if (ai_res.error || !ai_res.data) {
+				return { data: null, error: ai_res.error ?? 'AI suggestion failed' };
+			}
+
+			return {
+				data: {
+					answer: ai_res.data,
+					sources: matches.map((m) => ({
+						resolution_id: m.resolution_id,
+						ticket_id: m.ticket_id,
+						resolution_text: m.resolution_text,
+						score: m.score,
+					})),
+				},
+				error: null,
+			};
+		} catch (error) {
+			console.error('Error in suggest_with_ai:', error);
 			return { data: null, error };
 		}
 	},

@@ -74,6 +74,36 @@ export const resolution_route = async (app: FastifyInstance) => {
 	);
 
 	app.post(
+		'/resolutions/ask',
+		{
+			schema: {
+				body: z.object({ problem: z.string().min(1) }),
+				querystring: z.object({
+					limit: z.coerce.number().int().min(1).max(20).optional(),
+				}),
+				response: {
+					200: z.object({
+						answer: z.string(),
+						sources: z.array(
+							z.object({
+								resolution_id: z.string(),
+								ticket_id: z.string(),
+								resolution_text: z.string(),
+								score: z.number(),
+							}),
+						),
+					}),
+					500: z.object({ error: z.string() }),
+				},
+				tags: ['Resolutions'],
+				summary:
+					'Ask AI for a solution synthesized from similar past resolutions (RAG)',
+			},
+		},
+		resolution_controller.suggest_with_ai,
+	);
+
+	app.post(
 		'/resolutions/train',
 		{
 			schema: {

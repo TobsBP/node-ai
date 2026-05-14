@@ -62,6 +62,29 @@ export const resolution_controller = {
 		return reply.status(200).send(data);
 	},
 
+	async suggest_with_ai(
+		request: FastifyRequest<{
+			Body: { problem: string };
+			Querystring: { limit?: number };
+		}>,
+		reply: FastifyReply,
+	) {
+		const { problem } = request.body;
+		const limit = request.query.limit ?? 5;
+
+		const { data, error } = await resolution_service.suggest_with_ai(
+			problem,
+			limit,
+		);
+
+		if (error)
+			return reply.status(500).send({
+				error: error instanceof Error ? error.message : String(error),
+			});
+
+		return reply.status(200).send(data);
+	},
+
 	async trigger_training(
 		request: FastifyRequest<{ Body?: { force?: boolean } }>,
 		reply: FastifyReply,
