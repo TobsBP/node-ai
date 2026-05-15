@@ -8,7 +8,7 @@ const url = process.env.MONGODB_URL;
 if (!url) throw new Error('MONGODB_URL is not set');
 
 const client = new MongoClient(url);
-const db = client.db('node-ai');
+const db = client.db('class-ticket');
 
 export const tickets_collection: Collection<Ticket> = db.collection('tickets');
 export const conversations_collection: Collection<Conversation> =

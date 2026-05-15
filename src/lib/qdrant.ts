@@ -7,9 +7,13 @@ if (!url_qdrant || !key_qdrant) {
 	throw new Error('QDRANT_URL and QDRANT_API_KEY must be set');
 }
 
-export const qdrant = new QdrantClient({ url: url_qdrant, apiKey: key_qdrant });
+export const qdrant = new QdrantClient({
+	url: url_qdrant,
+	apiKey: key_qdrant,
+	port: 443,
+});
 
-export const TICKETS_COLLECTION = 'tickets';
+export const TICKETS_COLLECTION = 'class-ticket';
 export const RESOLUTIONS_COLLECTION = 'resolutions';
 export const VECTOR_SIZE = 768;
 
