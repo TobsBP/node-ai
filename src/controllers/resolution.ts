@@ -6,18 +6,20 @@ export const resolution_controller = {
 		request: FastifyRequest<{
 			Querystring: {
 				status?: 'pending' | 'approved' | 'rejected';
+				category?: 'bug' | 'infra' | 'auth' | 'feature' | 'other';
+				severity?: 'critical' | 'high' | 'medium' | 'low';
+				area?: 'backend' | 'frontend' | 'fullstack';
+				resolved_by?: string;
+				q?: string;
+				resolved_from?: string;
+				resolved_to?: string;
 				limit?: number;
 				offset?: number;
 			};
 		}>,
 		reply: FastifyReply,
 	) {
-		const { status = 'pending', limit = 20, offset = 0 } = request.query;
-		const { data, error } = await resolution_service.list(
-			status,
-			limit,
-			offset,
-		);
+		const { data, error } = await resolution_service.list(request.query);
 
 		if (error)
 			return reply.status(500).send({

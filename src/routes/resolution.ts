@@ -10,6 +10,15 @@ export const resolution_route = async (app: FastifyInstance) => {
 			schema: {
 				querystring: z.object({
 					status: z.enum(['pending', 'approved', 'rejected']).optional(),
+					category: z
+						.enum(['bug', 'infra', 'auth', 'feature', 'other'])
+						.optional(),
+					severity: z.enum(['critical', 'high', 'medium', 'low']).optional(),
+					area: z.enum(['backend', 'frontend', 'fullstack']).optional(),
+					resolved_by: z.string().min(1).optional(),
+					q: z.string().min(1).optional(),
+					resolved_from: z.string().datetime().optional(),
+					resolved_to: z.string().datetime().optional(),
 					limit: z.coerce.number().int().min(1).max(100).optional(),
 					offset: z.coerce.number().int().min(0).optional(),
 				}),

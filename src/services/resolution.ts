@@ -1,6 +1,5 @@
 import { randomUUID } from 'node:crypto';
 import { generate_embedding, send_message } from '@/lib/model.js';
-import { SUGGEST_PROMPT } from '@/utils/consts/suggest_prompt.js';
 import { resolutions_collection } from '@/lib/mongo.js';
 import {
 	ensure_resolutions_collection,
@@ -9,6 +8,7 @@ import {
 } from '@/lib/qdrant.js';
 import type { Resolution } from '@/types/resolution.js';
 import type { Ticket } from '@/types/ticket.js';
+import { SUGGEST_PROMPT } from '@/utils/consts/suggest_prompt.js';
 
 function build_problem_text(ticket: Ticket): string {
 	const parts = [
@@ -28,6 +28,19 @@ function approval_to_mongo(filter: ApprovalFilter) {
 	if (filter === 'approved') return { approved_for_training: true };
 	return { approved_for_training: false };
 }
+
+type ListFilters = {
+	status?: ApprovalFilter;
+	category?: string;
+	severity?: string;
+	area?: string;
+	resolved_by?: string;
+	q?: string;
+	resolved_from?: string;
+	resolved_to?: string;
+	limit?: number;
+	offset?: number;
+};
 
 export const resolution_service = {
 	async create_from_ticket(
@@ -58,13 +71,37 @@ export const resolution_service = {
 	},
 
 	async list(
-		status: ApprovalFilter = 'pending',
-		limit = 20,
-		offset = 0,
+		filters: ListFilters = {},
 	): Promise<{ data: Resolution[] | null; error: unknown }> {
 		try {
+			const {
+				status = 'pending',
+				category,
+				severity,
+				area,
+				resolved_by,
+				q,
+				resolved_from,
+				resolved_to,
+				limit = 20,
+				offset = 0,
+			} = filters;
+
+			const query: Record<string, unknown> = approval_to_mongo(status);
+			if (category) query['ticket_snapshot.category'] = category;
+			if (severity) query['ticket_snapshot.severity'] = severity;
+			if (area) query['ticket_snapshot.area'] = area;
+			if (resolved_by) query.resolved_by = resolved_by;
+			if (q) query.resolution_text = { $regex: q, $options: 'i' };
+			if (resolved_from || resolved_to) {
+				const range: Record<string, string> = {};
+				if (resolved_from) range.$gte = resolved_from;
+				if (resolved_to) range.$lte = resolved_to;
+				query.resolved_at = range;
+			}
+
 			const data = await resolutions_collection
-				.find(approval_to_mongo(status), { projection: { _id: 0 } })
+				.find(query, { projection: { _id: 0 } })
 				.sort({ resolved_at: -1 })
 				.skip(offset)
 				.limit(limit)
