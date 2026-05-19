@@ -5,12 +5,34 @@ import { ticket_service } from '@/services/ticket.js';
 export const ticket_controller = {
 	async list(
 		request: FastifyRequest<{
-			Querystring: { limit?: number; offset?: number; createdBy?: string };
+			Querystring: {
+				limit?: number;
+				offset?: number;
+				createdBy?: string;
+				studentId?: string;
+				system?: string;
+				createdFrom?: string;
+				createdTo?: string;
+			};
 		}>,
 		reply: FastifyReply,
 	) {
-		const { limit = 20, offset = 0, createdBy } = request.query;
-		const { data, error } = await ticket_service.list(limit, offset, createdBy);
+		const {
+			limit = 20,
+			offset = 0,
+			createdBy,
+			studentId,
+			system,
+			createdFrom,
+			createdTo,
+		} = request.query;
+		const { data, error } = await ticket_service.list(limit, offset, {
+			createdBy,
+			studentId,
+			system,
+			createdFrom,
+			createdTo,
+		});
 
 		if (error)
 			return reply.status(500).send({
@@ -21,16 +43,34 @@ export const ticket_controller = {
 
 	async list_lite(
 		request: FastifyRequest<{
-			Querystring: { limit?: number; offset?: number; createdBy?: string };
+			Querystring: {
+				limit?: number;
+				offset?: number;
+				createdBy?: string;
+				studentId?: string;
+				system?: string;
+				createdFrom?: string;
+				createdTo?: string;
+			};
 		}>,
 		reply: FastifyReply,
 	) {
-		const { limit = 20, offset = 0, createdBy } = request.query;
-		const { data, error } = await ticket_service.list_lite(
-			limit,
-			offset,
+		const {
+			limit = 20,
+			offset = 0,
 			createdBy,
-		);
+			studentId,
+			system,
+			createdFrom,
+			createdTo,
+		} = request.query;
+		const { data, error } = await ticket_service.list_lite(limit, offset, {
+			createdBy,
+			studentId,
+			system,
+			createdFrom,
+			createdTo,
+		});
 
 		if (error)
 			return reply.status(500).send({

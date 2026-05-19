@@ -25,6 +25,30 @@ type TicketInput = Pick<
 	| 'createdBy'
 >;
 
+export type TicketListFilters = {
+	createdBy?: string;
+	studentId?: string;
+	system?: string;
+	createdFrom?: string;
+	createdTo?: string;
+};
+
+function build_list_filter(
+	filters: TicketListFilters,
+): Record<string, unknown> {
+	const filter: Record<string, unknown> = {};
+	if (filters.createdBy) filter.createdBy = filters.createdBy;
+	if (filters.studentId) filter.studentId = filters.studentId;
+	if (filters.system) filter.system = filters.system;
+	if (filters.createdFrom || filters.createdTo) {
+		const range: Record<string, string> = {};
+		if (filters.createdFrom) range.$gte = filters.createdFrom;
+		if (filters.createdTo) range.$lte = filters.createdTo;
+		filter.created_at = range;
+	}
+	return filter;
+}
+
 function build_message(input: TicketInput): string {
 	const parts = [
 		`Title: ${input.title}`,
@@ -40,10 +64,10 @@ export const ticket_service = {
 	async list(
 		limit = 20,
 		offset = 0,
-		createdBy?: string,
+		filters: TicketListFilters = {},
 	): Promise<{ data: Ticket[] | null; error: unknown }> {
 		try {
-			const filter = createdBy ? { createdBy } : {};
+			const filter = build_list_filter(filters);
 			const data = await tickets_collection
 				.find(filter, { projection: { _id: 0 } })
 				.sort({ created_at: -1 })
@@ -60,14 +84,14 @@ export const ticket_service = {
 	async list_lite(
 		limit = 20,
 		offset = 0,
-		createdBy?: string,
+		filters: TicketListFilters = {},
 	): Promise<{ data: Ticket[] | null; error: unknown }> {
 		try {
 			const filter: Record<string, unknown> = {
+				...build_list_filter(filters),
 				summary: '',
 				analysis: '',
 			};
-			if (createdBy) filter.createdBy = createdBy;
 
 			const data = await tickets_collection
 				.find(filter, { projection: { _id: 0 } })
