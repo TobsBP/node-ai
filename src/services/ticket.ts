@@ -89,8 +89,7 @@ export const ticket_service = {
 		try {
 			const filter: Record<string, unknown> = {
 				...build_list_filter(filters),
-				summary: '',
-				analysis: '',
+				ai_status: 'pending',
 			};
 
 			const data = await tickets_collection
@@ -136,12 +135,12 @@ export const ticket_service = {
 		}
 	},
 
-	async classify_for_rag(
+	async _classify_async(
+		ticketId: string,
 		input: TicketInput,
-	): Promise<{ data: Ticket | null; error: unknown }> {
+		mode: 'full' | 'lite',
+	): Promise<void> {
 		try {
-			await ensure_collection();
-
 			const message = build_message(input);
 
 			const [query_embedding, doc_embedding] = await Promise.all([
@@ -157,22 +156,66 @@ export const ticket_service = {
 
 			const context = similar.points.map((p) => p.payload as Ticket);
 
-			const classify_res = await send_message(
-				CLASSIFY_PROMPT(message, context),
-			);
+			const prompt =
+				mode === 'full'
+					? CLASSIFY_PROMPT(message, context)
+					: CLASSIFY_PROMPT_LITE(message, context);
+
+			const classify_res = await send_message(prompt);
 
 			if (classify_res.error || !classify_res.data) {
-				return {
-					data: null,
-					error: classify_res.error ?? 'Classification failed',
-				};
+				throw classify_res.error ?? new Error('Classification failed');
 			}
 
 			const raw = classify_res.data.trim().replace(/^```json\n?|```$/g, '');
-			const classification = JSON.parse(raw) as Pick<
-				Ticket,
-				'category' | 'severity' | 'area' | 'summary' | 'analysis' | 'tags'
+			const classification = JSON.parse(raw) as Partial<
+				Pick<
+					Ticket,
+					'category' | 'severity' | 'area' | 'summary' | 'analysis' | 'tags'
+				>
 			>;
+
+			const updated = await tickets_collection.findOneAndUpdate(
+				{ id: ticketId },
+				{
+					$set: {
+						...classification,
+						ai_status: 'ready',
+						ai_error: null,
+					},
+				},
+				{ returnDocument: 'after', projection: { _id: 0 } },
+			);
+
+			if (updated) {
+				await qdrant.upsert(TICKETS_COLLECTION, {
+					points: [
+						{
+							id: ticketId,
+							vector: doc_embedding,
+							payload: updated as unknown as Ticket,
+						},
+					],
+				});
+			}
+		} catch (error) {
+			console.error('Background classification failed:', error);
+			const msg = error instanceof Error ? error.message : String(error);
+			await tickets_collection
+				.updateOne(
+					{ id: ticketId },
+					{ $set: { ai_status: 'failed', ai_error: msg } },
+				)
+				.catch((e) => console.error('Failed to mark ticket as failed:', e));
+		}
+	},
+
+	async _create_pending(
+		input: TicketInput,
+		mode: 'full' | 'lite',
+	): Promise<{ data: Ticket | null; error: unknown }> {
+		try {
+			await ensure_collection();
 
 			const ticket: Ticket = {
 				id: randomUUID(),
@@ -191,16 +234,17 @@ export const ticket_service = {
 					},
 				],
 				created_at: new Date().toISOString(),
-				...classification,
+				tags: [],
+				ai_status: 'pending',
 			};
 
-			await qdrant.upsert(TICKETS_COLLECTION, {
-				points: [{ id: ticket.id, vector: doc_embedding, payload: ticket }],
-			});
+			await tickets_collection.insertOne(ticket);
+
+			void this._classify_async(ticket.id, input, mode);
 
 			return { data: ticket, error: null };
 		} catch (error) {
-			console.error('Error classifying for RAG:', error);
+			console.error('Error creating pending ticket:', error);
 			return { data: null, error };
 		}
 	},
@@ -208,89 +252,13 @@ export const ticket_service = {
 	async classify_and_save(
 		input: TicketInput,
 	): Promise<{ data: Ticket | null; error: unknown }> {
-		const { data: ticket, error } = await this.classify_for_rag(input);
-		if (error || !ticket) return { data: null, error };
-
-		try {
-			await tickets_collection.insertOne(ticket);
-		} catch (err) {
-			console.error('Error saving ticket to MongoDB:', err);
-		}
-
-		return { data: ticket, error: null };
+		return this._create_pending(input, 'full');
 	},
 
 	async create_lite(
 		input: TicketInput,
 	): Promise<{ data: Ticket | null; error: unknown }> {
-		try {
-			await ensure_collection();
-
-			const message = build_message(input);
-
-			const [query_embedding, doc_embedding] = await Promise.all([
-				generate_embedding(message, 'RETRIEVAL_QUERY'),
-				generate_embedding(message, 'RETRIEVAL_DOCUMENT'),
-			]);
-
-			const similar = await qdrant.query(TICKETS_COLLECTION, {
-				query: query_embedding,
-				limit: 3,
-				with_payload: true,
-			});
-
-			const context = similar.points.map((p) => p.payload as Ticket);
-
-			const classify_res = await send_message(
-				CLASSIFY_PROMPT_LITE(message, context),
-			);
-
-			if (classify_res.error || !classify_res.data) {
-				return {
-					data: null,
-					error: classify_res.error ?? 'Classification failed',
-				};
-			}
-
-			const raw = classify_res.data.trim().replace(/^```json\n?|```$/g, '');
-			const classification = JSON.parse(raw) as Pick<
-				Ticket,
-				'category' | 'severity' | 'area' | 'tags'
-			>;
-
-			const ticket: Ticket = {
-				id: randomUUID(),
-				...input,
-				status: 'open',
-				source: input.system,
-				replies: [],
-				audit: [
-					{
-						id: randomUUID(),
-						field: 'ticket',
-						old_value: null,
-						new_value: 'created',
-						changedBy: input.createdBy ?? 'unknown',
-						changed_at: new Date().toISOString(),
-					},
-				],
-				created_at: new Date().toISOString(),
-				summary: '',
-				analysis: '',
-				...classification,
-			};
-
-			await qdrant.upsert(TICKETS_COLLECTION, {
-				points: [{ id: ticket.id, vector: doc_embedding, payload: ticket }],
-			});
-
-			await tickets_collection.insertOne(ticket);
-
-			return { data: ticket, error: null };
-		} catch (error) {
-			console.error('Error creating lite ticket:', error);
-			return { data: null, error };
-		}
+		return this._create_pending(input, 'lite');
 	},
 
 	async create_jira_for_ticket(

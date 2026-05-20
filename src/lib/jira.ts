@@ -36,7 +36,11 @@ export async function create_jira_issue(
 			body: JSON.stringify({
 				fields: {
 					project: { key: JIRA_PROJECT_KEY },
-					issuetype: { name: CATEGORY_TO_ISSUE_TYPE[ticket.category] },
+					issuetype: {
+						name: ticket.category
+							? CATEGORY_TO_ISSUE_TYPE[ticket.category]
+							: 'Tarefa',
+					},
 					summary: ticket.title,
 					description: {
 						type: 'doc',
@@ -226,7 +230,11 @@ export async function create_jira_issue(
 								: []),
 						],
 					},
-					priority: { name: SEVERITY_TO_PRIORITY[ticket.severity] },
+					priority: {
+						name: ticket.severity
+							? SEVERITY_TO_PRIORITY[ticket.severity]
+							: 'Medium',
+					},
 					labels: ticket.tags,
 					assignee: { accountId: assigneeAccountId },
 				},
