@@ -480,6 +480,63 @@ export const ticket_service = {
 		}
 	},
 
+	async update_classification(
+		ticketId: string,
+		patch: {
+			category?: NonNullable<Ticket['category']>;
+			severity?: NonNullable<Ticket['severity']>;
+		},
+		changedBy: string,
+	): Promise<{ data: Ticket | null; error: unknown }> {
+		try {
+			const ticket = await tickets_collection.findOne({ id: ticketId });
+			if (!ticket) return { data: null, error: 'Ticket not found' };
+
+			const changed_at = new Date().toISOString();
+			const audit_entries: Ticket['audit'] = [];
+			const set: Record<string, unknown> = {};
+
+			if (patch.category && patch.category !== ticket.category) {
+				set.category = patch.category;
+				audit_entries.push({
+					id: randomUUID(),
+					field: 'category',
+					old_value: ticket.category ?? null,
+					new_value: patch.category,
+					changedBy,
+					changed_at,
+				});
+			}
+
+			if (patch.severity && patch.severity !== ticket.severity) {
+				set.severity = patch.severity;
+				audit_entries.push({
+					id: randomUUID(),
+					field: 'severity',
+					old_value: ticket.severity ?? null,
+					new_value: patch.severity,
+					changedBy,
+					changed_at,
+				});
+			}
+
+			if (audit_entries.length === 0) {
+				return { data: ticket as unknown as Ticket, error: null };
+			}
+
+			const result = await tickets_collection.findOneAndUpdate(
+				{ id: ticketId },
+				{ $set: set, $push: { audit: { $each: audit_entries } } },
+				{ returnDocument: 'after', projection: { _id: 0 } },
+			);
+
+			return { data: result as unknown as Ticket, error: null };
+		} catch (error) {
+			console.error('Error updating classification:', error);
+			return { data: null, error };
+		}
+	},
+
 	async update_status(
 		ticketId: string,
 		status:

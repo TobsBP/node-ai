@@ -231,6 +231,35 @@ export const ticket_route = async (app: FastifyInstance) => {
 		ticket_controller.update_status,
 	);
 
+	app.patch(
+		'/ticket/:id/classification',
+		{
+			schema: {
+				params: z.object({ id: z.uuid() }),
+				body: z
+					.object({
+						category: z
+							.enum(['bug', 'infra', 'auth', 'feature', 'other'])
+							.optional(),
+						severity: z.enum(['critical', 'high', 'medium', 'low']).optional(),
+					})
+					.refine((b) => b.category !== undefined || b.severity !== undefined, {
+						message: 'category or severity is required',
+					}),
+				response: {
+					200: ticket_schema,
+					400: z.object({ error: z.string() }),
+					401: z.object({ error: z.string() }),
+					404: z.object({ error: z.string() }),
+					500: z.object({ error: z.string() }),
+				},
+				tags: ['Tickets'],
+				summary: 'Update ticket category and/or severity',
+			},
+		},
+		ticket_controller.update_classification,
+	);
+
 	app.post(
 		'/tickets/search',
 		{
