@@ -14,6 +14,7 @@ export const notification_schema = z.object({
 	]),
 	message: z.string(),
 	read: z.boolean().default(false),
+	read_by: z.array(z.string()).default([]),
 	created_at: z.string(),
 });
 

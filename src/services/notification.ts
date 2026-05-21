@@ -14,6 +14,7 @@ export const notification_service = {
 				id: randomUUID(),
 				...input,
 				read: false,
+				read_by: [],
 				created_at: new Date().toISOString(),
 			};
 			await notifications_collection.insertOne(notification);
@@ -27,15 +28,24 @@ export const notification_service = {
 		error: unknown;
 	}> {
 		try {
-			const notifications = await notifications_collection
+			const raw = await notifications_collection
 				.find({ userId }, { projection: { _id: 0 } })
 				.sort({ created_at: -1 })
 				.toArray();
 
+			const notifications = raw.map((n) => {
+				const read_by = Array.isArray(n.read_by) ? n.read_by : [];
+				return {
+					...n,
+					read_by,
+					read: read_by.includes(userId),
+				} as Notification;
+			});
+
 			const unread_count = notifications.filter((n) => !n.read).length;
 
 			return {
-				data: { unread_count, notifications: notifications as Notification[] },
+				data: { unread_count, notifications },
 				error: null,
 			};
 		} catch (error) {
@@ -44,11 +54,14 @@ export const notification_service = {
 		}
 	},
 
-	async mark_read(id: string): Promise<{ success: boolean; error: unknown }> {
+	async mark_read(
+		id: string,
+		userId: string,
+	): Promise<{ success: boolean; error: unknown }> {
 		try {
 			const result = await notifications_collection.updateOne(
 				{ id },
-				{ $set: { read: true } },
+				{ $addToSet: { read_by: userId } },
 			);
 			if (result.matchedCount === 0)
 				return { success: false, error: 'Notification not found' };
@@ -64,8 +77,8 @@ export const notification_service = {
 	): Promise<{ success: boolean; error: unknown }> {
 		try {
 			await notifications_collection.updateMany(
-				{ userId, read: false },
-				{ $set: { read: true } },
+				{ userId, read_by: { $ne: userId } },
+				{ $addToSet: { read_by: userId } },
 			);
 			return { success: true, error: null };
 		} catch (error) {

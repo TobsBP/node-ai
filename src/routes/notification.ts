@@ -28,13 +28,14 @@ export const notification_route = async (app: FastifyInstance) => {
 		{
 			schema: {
 				params: z.object({ id: z.string() }),
+				querystring: z.object({ userId: z.string() }),
 				response: {
 					200: z.object({ success: z.boolean() }),
 					404: z.object({ error: z.string() }),
 					500: z.object({ error: z.string() }),
 				},
 				tags: ['Notifications'],
-				summary: 'Mark a single notification as read',
+				summary: 'Mark a single notification as read for a specific admin',
 			},
 		},
 		notification_controller.mark_read,

@@ -17,11 +17,18 @@ export const notification_controller = {
 	},
 
 	async mark_read(
-		request: FastifyRequest<{ Params: { id: string } }>,
+		request: FastifyRequest<{
+			Params: { id: string };
+			Querystring: { userId: string };
+		}>,
 		reply: FastifyReply,
 	) {
 		const { id } = request.params;
-		const { success, error } = await notification_service.mark_read(id);
+		const { userId } = request.query;
+		const { success, error } = await notification_service.mark_read(
+			id,
+			userId,
+		);
 
 		if (error === 'Notification not found')
 			return reply.status(404).send({ error: 'Notification not found' });
