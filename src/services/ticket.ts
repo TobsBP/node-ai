@@ -49,6 +49,21 @@ function build_list_filter(
 	return filter;
 }
 
+const ADMIN_USER_ID = 'admin';
+
+async function notify_admin(
+	ticketId: string,
+	type: Parameters<typeof notification_service.create>[0]['type'],
+	message: string,
+): Promise<void> {
+	await notification_service.create({
+		userId: ADMIN_USER_ID,
+		ticketId,
+		type,
+		message,
+	});
+}
+
 function build_message(input: TicketInput): string {
 	const parts = [
 		`Title: ${input.title}`,
@@ -240,6 +255,12 @@ export const ticket_service = {
 
 			await tickets_collection.insertOne(ticket);
 
+			await notify_admin(
+				ticket.id,
+				'ticket_created',
+				`Novo ticket criado: "${ticket.title}".`,
+			);
+
 			void this._classify_async(ticket.id, input, mode);
 
 			return { data: ticket, error: null };
@@ -304,6 +325,12 @@ export const ticket_service = {
 					$push: { audit: audit_entry },
 				},
 				{ returnDocument: 'after', projection: { _id: 0 } },
+			);
+
+			await notify_admin(
+				ticketId,
+				'jira_created',
+				`Jira ${jira.key} criada para o ticket "${ticket.title}".`,
 			);
 
 			return {
@@ -383,6 +410,12 @@ export const ticket_service = {
 				});
 			}
 
+			await notify_admin(
+				updated.id,
+				'new_reply',
+				`Nova resposta no ticket "${updated.title}".`,
+			);
+
 			return { data: updated, error: null };
 		} catch (error) {
 			console.error('Error adding reply:', error);
@@ -431,6 +464,14 @@ export const ticket_service = {
 				});
 			}
 
+			if (result) {
+				await notify_admin(
+					ticket.id,
+					'status_change',
+					`Status do ticket "${ticket.title}" alterado para "${status}".`,
+				);
+			}
+
 			return { data: result as unknown as Ticket, error: null };
 		} catch (error) {
 			console.error('Error updating status by jira_key:', error);
@@ -471,6 +512,14 @@ export const ticket_service = {
 					type: 'assignee_change',
 					message: `O responsável pelo seu ticket foi atualizado para "${responsible_dev}".`,
 				});
+			}
+
+			if (result) {
+				await notify_admin(
+					ticket.id,
+					'assignee_change',
+					`Responsável do ticket "${ticket.title}" alterado para "${responsible_dev}".`,
+				);
 			}
 
 			return { data: result as unknown as Ticket, error: null };
@@ -529,6 +578,15 @@ export const ticket_service = {
 				{ $set: set, $push: { audit: { $each: audit_entries } } },
 				{ returnDocument: 'after', projection: { _id: 0 } },
 			);
+
+			if (result) {
+				const fields = audit_entries.map((e) => e.field).join(', ');
+				await notify_admin(
+					ticketId,
+					'classification_change',
+					`Classificação do ticket "${ticket.title}" atualizada (${fields}).`,
+				);
+			}
 
 			return { data: result as unknown as Ticket, error: null };
 		} catch (error) {
@@ -624,6 +682,12 @@ export const ticket_service = {
 					message: `O status do seu ticket foi atualizado para "${status}".`,
 				});
 			}
+
+			await notify_admin(
+				ticketId,
+				'status_change',
+				`Status do ticket "${ticket.title}" alterado para "${status}".`,
+			);
 
 			return { data: result as unknown as Ticket, error: null };
 		} catch (error) {
