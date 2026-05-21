@@ -5,16 +5,17 @@ import type { Notification } from '@/types/notification.js';
 type CreateInput = Pick<
 	Notification,
 	'userId' | 'ticketId' | 'type' | 'message'
->;
+> & { actorId?: string };
 
 export const notification_service = {
 	async create(input: CreateInput): Promise<void> {
 		try {
+			const { actorId, ...rest } = input;
 			const notification: Notification = {
 				id: randomUUID(),
-				...input,
+				...rest,
 				read: false,
-				read_by: [],
+				read_by: actorId ? [actorId] : [],
 				created_at: new Date().toISOString(),
 			};
 			await notifications_collection.insertOne(notification);
@@ -23,7 +24,10 @@ export const notification_service = {
 		}
 	},
 
-	async list_by_user(userId: string): Promise<{
+	async list_by_user(
+		userId: string,
+		readerId?: string,
+	): Promise<{
 		data: { unread_count: number; notifications: Notification[] } | null;
 		error: unknown;
 	}> {
@@ -33,12 +37,13 @@ export const notification_service = {
 				.sort({ created_at: -1 })
 				.toArray();
 
+			const reader = readerId ?? userId;
 			const notifications = raw.map((n) => {
 				const read_by = Array.isArray(n.read_by) ? n.read_by : [];
 				return {
 					...n,
 					read_by,
-					read: read_by.includes(userId),
+					read: read_by.includes(reader),
 				} as Notification;
 			});
 
@@ -56,12 +61,12 @@ export const notification_service = {
 
 	async mark_read(
 		id: string,
-		userId: string,
+		readerId: string,
 	): Promise<{ success: boolean; error: unknown }> {
 		try {
 			const result = await notifications_collection.updateOne(
 				{ id },
-				{ $addToSet: { read_by: userId } },
+				{ $addToSet: { read_by: readerId } },
 			);
 			if (result.matchedCount === 0)
 				return { success: false, error: 'Notification not found' };
@@ -74,11 +79,13 @@ export const notification_service = {
 
 	async mark_all_read(
 		userId: string,
+		readerId?: string,
 	): Promise<{ success: boolean; error: unknown }> {
 		try {
+			const reader = readerId ?? userId;
 			await notifications_collection.updateMany(
-				{ userId, read_by: { $ne: userId } },
-				{ $addToSet: { read_by: userId } },
+				{ userId, read_by: { $ne: reader } },
+				{ $addToSet: { read_by: reader } },
 			);
 			return { success: true, error: null };
 		} catch (error) {

@@ -55,12 +55,14 @@ async function notify_admin(
 	ticketId: string,
 	type: Parameters<typeof notification_service.create>[0]['type'],
 	message: string,
+	actorId?: string,
 ): Promise<void> {
 	await notification_service.create({
 		userId: ADMIN_USER_ID,
 		ticketId,
 		type,
 		message,
+		actorId,
 	});
 }
 
@@ -259,6 +261,7 @@ export const ticket_service = {
 				ticket.id,
 				'ticket_created',
 				`Novo ticket criado: "${ticket.title}".`,
+				input.createdBy ?? undefined,
 			);
 
 			void this._classify_async(ticket.id, input, mode);
@@ -331,6 +334,7 @@ export const ticket_service = {
 				ticketId,
 				'jira_created',
 				`Jira ${jira.key} criada para o ticket "${ticket.title}".`,
+				devId,
 			);
 
 			return {
@@ -414,6 +418,7 @@ export const ticket_service = {
 				updated.id,
 				'new_reply',
 				`Nova resposta no ticket "${updated.title}".`,
+				createdBy,
 			);
 
 			return { data: updated, error: null };
@@ -585,6 +590,7 @@ export const ticket_service = {
 					ticketId,
 					'classification_change',
 					`Classificação do ticket "${ticket.title}" atualizada (${fields}).`,
+					changedBy,
 				);
 			}
 
@@ -687,6 +693,7 @@ export const ticket_service = {
 				ticketId,
 				'status_change',
 				`Status do ticket "${ticket.title}" alterado para "${status}".`,
+				changedBy,
 			);
 
 			return { data: result as unknown as Ticket, error: null };

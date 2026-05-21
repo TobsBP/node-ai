@@ -3,11 +3,16 @@ import { notification_service } from '@/services/notification.js';
 
 export const notification_controller = {
 	async list(
-		request: FastifyRequest<{ Querystring: { userId: string } }>,
+		request: FastifyRequest<{
+			Querystring: { userId: string; readerId?: string };
+		}>,
 		reply: FastifyReply,
 	) {
-		const { userId } = request.query;
-		const { data, error } = await notification_service.list_by_user(userId);
+		const { userId, readerId } = request.query;
+		const { data, error } = await notification_service.list_by_user(
+			userId,
+			readerId,
+		);
 
 		if (error)
 			return reply.status(500).send({
@@ -19,15 +24,15 @@ export const notification_controller = {
 	async mark_read(
 		request: FastifyRequest<{
 			Params: { id: string };
-			Querystring: { userId: string };
+			Querystring: { readerId: string };
 		}>,
 		reply: FastifyReply,
 	) {
 		const { id } = request.params;
-		const { userId } = request.query;
+		const { readerId } = request.query;
 		const { success, error } = await notification_service.mark_read(
 			id,
-			userId,
+			readerId,
 		);
 
 		if (error === 'Notification not found')
@@ -43,11 +48,16 @@ export const notification_controller = {
 	},
 
 	async mark_all_read(
-		request: FastifyRequest<{ Querystring: { userId: string } }>,
+		request: FastifyRequest<{
+			Querystring: { userId: string; readerId?: string };
+		}>,
 		reply: FastifyReply,
 	) {
-		const { userId } = request.query;
-		const { error } = await notification_service.mark_all_read(userId);
+		const { userId, readerId } = request.query;
+		const { error } = await notification_service.mark_all_read(
+			userId,
+			readerId,
+		);
 
 		if (error)
 			return reply.status(500).send({
