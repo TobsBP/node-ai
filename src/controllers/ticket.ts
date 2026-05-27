@@ -277,6 +277,47 @@ export const ticket_controller = {
 		return reply.status(201).send(data);
 	},
 
+	async update_responsible(
+		request: FastifyRequest<{
+			Params: { id: string };
+			Body: { responsible_dev: string };
+		}>,
+		reply: FastifyReply,
+	) {
+		const authHeader = request.headers.authorization;
+		if (!authHeader?.startsWith('Bearer ')) {
+			return reply
+				.status(401)
+				.send({ error: 'Missing or invalid authorization header' });
+		}
+
+		let changedBy: string;
+		try {
+			changedBy = await verify_firebase_token(authHeader.slice(7));
+		} catch {
+			return reply.status(401).send({ error: 'Invalid or expired token' });
+		}
+
+		const { id } = request.params;
+		const { responsible_dev } = request.body;
+
+		const { data, error } = await ticket_service.update_responsible_dev(
+			id,
+			responsible_dev,
+			changedBy,
+		);
+
+		if (error) {
+			if (error === 'Ticket not found')
+				return reply.status(404).send({ error });
+			return reply.status(500).send({
+				error: error instanceof Error ? error.message : String(error),
+			});
+		}
+
+		return reply.status(200).send(data);
+	},
+
 	async reply(
 		request: FastifyRequest<{
 			Params: { id: string };

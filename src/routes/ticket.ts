@@ -177,6 +177,27 @@ export const ticket_route = async (app: FastifyInstance) => {
 		ticket_controller.create_jira,
 	);
 
+	app.patch(
+		'/ticket/:id/responsible',
+		{
+			schema: {
+				params: z.object({ id: z.string().uuid() }),
+				body: z.object({ responsible_dev: z.string() }),
+				response: {
+					200: ticket_schema,
+					400: z.object({ error: z.string() }),
+					401: z.object({ error: z.string() }),
+					404: z.object({ error: z.string() }),
+					500: z.object({ error: z.string() }),
+				},
+				tags: ['Tickets'],
+				summary:
+					'Set the responsible dev (Firebase ID) for a ticket without creating a Jira issue',
+			},
+		},
+		ticket_controller.update_responsible,
+	);
+
 	app.post(
 		'/tickets/:id/replies',
 		{

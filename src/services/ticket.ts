@@ -534,6 +534,69 @@ export const ticket_service = {
 		}
 	},
 
+	async update_responsible_dev(
+		ticketId: string,
+		responsible_dev: string,
+		changedBy: string,
+	): Promise<{ data: Ticket | null; error: unknown }> {
+		try {
+			const ticket = await tickets_collection.findOne({ id: ticketId });
+			if (!ticket) return { data: null, error: 'Ticket not found' };
+
+			const next = responsible_dev.trim() === '' ? null : responsible_dev;
+			const current = ticket.responsible_dev ?? null;
+
+			if (current === next) {
+				return { data: ticket as unknown as Ticket, error: null };
+			}
+
+			const result = await tickets_collection.findOneAndUpdate(
+				{ id: ticketId },
+				{
+					$set: { responsible_dev: next },
+					$push: {
+						audit: {
+							id: randomUUID(),
+							field: 'responsible_dev',
+							old_value: current,
+							new_value: next,
+							changedBy,
+							changed_at: new Date().toISOString(),
+						},
+					},
+				},
+				{ returnDocument: 'after', projection: { _id: 0 } },
+			);
+
+			if (result && ticket.createdBy && ticket.createdBy !== changedBy) {
+				await notification_service.create({
+					userId: ticket.createdBy,
+					ticketId,
+					type: 'assignee_change',
+					message: next
+						? `O responsável pelo seu ticket foi atualizado.`
+						: `O responsável pelo seu ticket foi removido.`,
+				});
+			}
+
+			if (result) {
+				await notify_admin(
+					ticketId,
+					'assignee_change',
+					next
+						? `Responsável do ticket "${ticket.title}" alterado para "${next}".`
+						: `Responsável do ticket "${ticket.title}" removido.`,
+					changedBy,
+				);
+			}
+
+			return { data: result as unknown as Ticket, error: null };
+		} catch (error) {
+			console.error('Error updating responsible_dev:', error);
+			return { data: null, error };
+		}
+	},
+
 	async update_classification(
 		ticketId: string,
 		patch: {
