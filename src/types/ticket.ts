@@ -5,6 +5,7 @@ export const reply_schema = z.object({
 	content: z.string(),
 	file: z.string().nullish(),
 	createdBy: z.string(),
+	mentions: z.array(z.string()).default([]),
 	created_at: z.string(),
 });
 

@@ -386,13 +386,19 @@ export const ticket_service = {
 		content: string,
 		createdBy: string,
 		file?: string,
+		mentions: string[] = [],
 	): Promise<{ data: Ticket | null; error: unknown }> {
 		try {
+			const mentioned = [...new Set(mentions)].filter(
+				(id) => id && id !== createdBy,
+			);
+
 			const reply = {
 				id: randomUUID(),
 				content,
 				file,
 				createdBy,
+				mentions: mentioned,
 				created_at: new Date().toISOString(),
 			};
 
@@ -411,6 +417,16 @@ export const ticket_service = {
 					ticketId: updated.id,
 					type: 'new_reply',
 					message: 'Seu ticket recebeu uma nova resposta.',
+				});
+			}
+
+			for (const userId of mentioned) {
+				if (userId === updated.createdBy) continue;
+				await notification_service.create({
+					userId,
+					ticketId: updated.id,
+					type: 'mention',
+					message: `Você foi mencionada em uma resposta no ticket "${updated.title}".`,
 				});
 			}
 

@@ -353,11 +353,27 @@ export const ticket_controller = {
 			return reply.status(400).send({ error: 'Content is required' });
 		}
 
+		let mentions: string[] = [];
+		if (fields.mentions) {
+			try {
+				const parsed = JSON.parse(fields.mentions);
+				if (Array.isArray(parsed)) {
+					mentions = parsed.filter((m): m is string => typeof m === 'string');
+				}
+			} catch {
+				mentions = fields.mentions
+					.split(',')
+					.map((m) => m.trim())
+					.filter(Boolean);
+			}
+		}
+
 		const { data, error } = await ticket_service.add_reply(
 			id,
 			content,
 			createdBy,
 			file,
+			mentions,
 		);
 
 		if (error) {

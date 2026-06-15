@@ -11,6 +11,7 @@ export const notification_schema = z.object({
 		'ticket_created',
 		'classification_change',
 		'jira_created',
+		'mention',
 	]),
 	message: z.string(),
 	read: z.boolean().default(false),
